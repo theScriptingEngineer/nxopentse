@@ -1,0 +1,25 @@
+[project]
+name = "nxopen"
+version = "0.0.10"
+authors = [
+  { name="theScriptingEngineer", email="nxopen@theScriptingEngineer.com" },
+]
+description = "An NXOpen helper package to reuse code in scripts, in order to avoid having all the underlying code in the journals itself."
+readme = "README.md"
+requires-python = ">=3.6"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/theScriptingEngineer/NXOpen-CAE-python"
+Issues = "https://github.com/theScriptingEngineer/NXOpen-CAE-python/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+sources = ["src"]
