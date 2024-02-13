@@ -4,6 +4,7 @@ from typing import List, cast, Optional, Union
 
 import NXOpen
 import NXOpen.CAE
+import NXOpen.UF
 
 from ..tools import * # so we can use these
 
@@ -30,7 +31,7 @@ def solve_solution(solution_name: str):
     sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, base_part)
 
     # get the requested solution
-    sim_solutions: List[NXOpen.CAE.SimSolution] = sim_part.Simulation.Solutions.ToArray()
+    sim_solutions: List[NXOpen.CAE.SimSolution] = [item for item in sim_part.Simulation.Solutions]
     sim_solution: List[NXOpen.CAE.SimSolution] = [item for item in sim_solutions if item.Name.lower() == solution_name.lower()]
     if sim_solution == None:
         the_lw.WriteFullline("Solution with name " + solution_name + " could not be found in " + sim_part.FullPath)

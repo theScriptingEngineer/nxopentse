@@ -5,6 +5,7 @@ from typing import List, cast, Optional, Union
 
 import NXOpen
 import NXOpen.CAE
+import NXOpen.UF
 
 
 the_session: NXOpen.Session = NXOpen.Session.GetSession()
@@ -49,7 +50,7 @@ def create_2dmesh_collector(thickness: float, color: int = None) -> Optional[NXO
     mesh_collector_builder: NXOpen.CAE.MeshCollectorBuilder = mesh_manager.CreateCollectorBuilder(null_mesh_collector, "ThinShell")
 
     # Get the highest label from the physical properties to then pass as parameter in the creation of a physical property.
-    physicalPropertyTables: List[NXOpen.CAE.PhysicalPropertyTable] = fem_part.PhysicalPropertyTables.ToArray()
+    physicalPropertyTables: List[NXOpen.CAE.PhysicalPropertyTable] = [item for item in fem_part.PhysicalPropertyTables]
     max_label = 1
     if len(physicalPropertyTables) != 0:
         max_label = physicalPropertyTables[len(physicalPropertyTables) - 1].Label + 1
@@ -343,6 +344,14 @@ def create_nodal_force(node_label: int, fx: float, fy: float, fz: float, force_n
     expression3: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(fz), unit1)
 
     field_manager: NXOpen.Fields.FieldManager = cast(NXOpen.Fields.FieldManager, sim_part.FindObject("FieldManager"))
+    property_table.SetTablePropertyWithoutValue("CylindricalMagnitude")
+    property_table.SetVectorFieldWrapperPropertyValue("CylindricalMagnitude", NXOpen.Fields.VectorFieldWrapper.NotSet)
+    property_table.SetTablePropertyWithoutValue("SphericalMagnitude")
+    property_table.SetVectorFieldWrapperPropertyValue("SphericalMagnitude", NXOpen.Fields.VectorFieldWrapper.NotSet)
+    property_table.SetTablePropertyWithoutValue("DistributionField")
+    property_table.SetScalarFieldWrapperPropertyValue("DistributionField", NXOpen.Fields.ScalarFieldWrapper.NotSet)
+    property_table.SetTablePropertyWithoutValue("ComponentsDistributionField")
+    property_table.SetVectorFieldWrapperPropertyValue("ComponentsDistributionField", NXOpen.Fields.VectorFieldWrapper.NotSet)
     expressions: List[NXOpen.Expression] = [NXOpen.Expression.Null] * 3 
     expressions[0] = expression1
     expressions[1] = expression2
@@ -350,14 +359,6 @@ def create_nodal_force(node_label: int, fx: float, fy: float, fz: float, force_n
     vector_field_wrapper: NXOpen.Fields.VectorFieldWrapper = field_manager.CreateVectorFieldWrapperWithExpressions(expressions)
     
     property_table.SetVectorFieldWrapperPropertyValue("CartesianMagnitude", vector_field_wrapper)
-    property_table.SetTablePropertyWithoutValue("CylindricalMagnitude")
-    property_table.SetVectorFieldWrapperPropertyValue("CylindricalMagnitude", NXOpen.Fields.VectorFieldWrapper.Null)
-    property_table.SetTablePropertyWithoutValue("SphericalMagnitude")
-    property_table.SetVectorFieldWrapperPropertyValue("SphericalMagnitude", NXOpen.Fields.VectorFieldWrapper.Null)
-    property_table.SetTablePropertyWithoutValue("DistributionField")
-    property_table.SetScalarFieldWrapperPropertyValue("DistributionField", NXOpen.Fields.ScalarFieldWrapper.Null)
-    property_table.SetTablePropertyWithoutValue("ComponentsDistributionField")
-    property_table.SetVectorFieldWrapperPropertyValue("ComponentsDistributionField", NXOpen.Fields.VectorFieldWrapper.Null)
     
     sim_bc: NXOpen.CAE.SimBC = sim_bc_builder.CommitAddBc()
     
@@ -417,6 +418,7 @@ def add_solver_set_to_subcase(solution_name: str, subcase_name: str, solver_set_
     # simBcGroups: List[NXOpen.CAE.SimBcGroup] = simSolutionStep.GetGroups()
     # simLoadGroup: NXOpen.CAE.SimLoadGroup = cast(NXOpen.CAE.SimLoadGroup, simBcGroups[0])
     simLoad_group.AddLoadSet(sim_load_set[0])
+
 
 def add_load_to_solver_set(solver_set_name: str, load_name: str) -> None:
     """This function adds a load with a given name to a SolverSet with a given name.
@@ -713,7 +715,7 @@ def get_solution(solution_name: str) -> Union[NXOpen.CAE.SimSolution, None]:
 
     sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, base_part) # explicit casting makes it clear
     sim_simulation = sim_part.Simulation
-    sim_solutions: List[NXOpen.CAE.SimSolution] = sim_simulation.Solutions.ToArray()
+    sim_solutions: List[NXOpen.CAE.SimSolution] = [item for item in sim_simulation.Solutions] # no .ToArray() in python
 
     sim_solution: List[NXOpen.CAE.SimSolution] = [item for item in sim_solutions if item.Name.lower() == solution_name.lower()]
     if len(sim_solution) == 0:

@@ -2,6 +2,7 @@ import os
 
 import NXOpen
 import NXOpen.CAE
+import NXOpen.UF
 
 
 the_session: NXOpen.Session = NXOpen.Session.GetSession()
