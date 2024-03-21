@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   docs-build-containerize-push:
-
+    if: startsWith(github.ref, 'refs/tags/')  # only create documentation on tag pushes
     # Add "id-token" with the intended permissions. Required for google cloud authentication
     permissions:
       contents: 'read'
