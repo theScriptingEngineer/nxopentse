@@ -7,69 +7,69 @@ env:
   REGION: europe-west4
   REPO_NAME: nxopentsedocumentation
   DOCKER_IMAGE_NAME: sphinx-docs-nginxdocker
-  SERVICE: nxopentse-documentation
+  SERVICE: nxopentsedocumentation
 
 permissions:
   contents: write
 
 jobs:
-  docs:
+  # docs-build-containerize-push:
 
-    # Add "id-token" with the intended permissions.
-    permissions:
-      contents: 'read'
-      id-token: 'write'
+  #   # Add "id-token" with the intended permissions. Required for google cloud authentication
+  #   permissions:
+  #     contents: 'read'
+  #     id-token: 'write'
 
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-python@v3
+  #     - name: Install dependencies
+  #       run: |
+  #         pip install sphinx sphinx_rtd_theme myst_parser
+  #     - name: Sphinx build
+  #       run: |
+  #         sphinx-build -M html docs/source/ docs/build/
+
+  #     - name: Build the Docker image
+  #       run: docker build . --file ./docs/DocsDockerfile --tag ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
+
+  #     # from: https://github.com/google-github-actions/auth#setting-up-workload-identity-federation
+  #     # I took the authentication via "Service Account Key JSON" because it is very similar to the CLI on a local machine
+  #     # I had to add the service account as a principle to itself with the "Service Account Token Creator" role, otherwise the service account was not permitted
+  #     - id: 'auth'
+  #       name: 'Authenticate to Google Cloud'
+  #       uses: 'google-github-actions/auth@v2'
+  #       with:
+  #         credentials_json: ${{ secrets.GOOGLE_ARTIFACTREGISTY_CREDENTIALS }}
+  #         token_format: 'access_token'
+
+  #     # This example runs "docker login" directly to Container Registry.
+  #     - name: Docker login
+  #       run: echo '${{ steps.auth.outputs.access_token }}' | docker login -u oauth2accesstoken --password-stdin ${{env.REGION}}-docker.pkg.dev
+
+  #     - name: 'Docker push'
+  #       run: |-
+  #         docker push ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
+
+  deploy:
+    # needs: docs-build-containerize-push
+    name: deploy
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v3
-      - name: Install dependencies
-        run: |
-          pip install sphinx sphinx_rtd_theme myst_parser
-      - name: Sphinx build
-        run: |
-          sphinx-build -M html docs/source/ docs/build/
-
-      - name: Build the Docker image
-        run: docker build . --file ./docs/DocsDockerfile --tag ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
-
-      # from: https://github.com/google-github-actions/auth#setting-up-workload-identity-federation
-      # I took the authentication via "Service Account Key JSON" because it is very similar to the CLI on a local machine
-      # I had to add the service account as a principle to itself with the "Service Account Token Creator" role, otherwise the service account was not permitted
-      - id: 'auth'
-        name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@v2'
-        with:
-          credentials_json: ${{ secrets.GOOGLE_ARTIFACTREGISTY_CREDENTIALS }}
-          token_format: 'access_token'
-
-      # This example runs "docker login" directly to Container Registry.
-      - name: Docker login
-        run: echo '${{ steps.auth.outputs.access_token }}' | docker login -u oauth2accesstoken --password-stdin ${{env.REGION}}-docker.pkg.dev
-
-      - name: 'Docker push'
-        run: |-
-          docker push ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
-
-  # deploy:
-  #   needs: docker-release
-  #   name: deploy
-  #   runs-on: ubuntu-latest
-
-  #   steps:
-  #   - uses: actions/checkout@v3
     
-  #   # from https://github.com/google-github-actions/deploy-cloudrun#credentials
-  #   - id: 'authCloudRun'
-  #     uses: 'google-github-actions/auth@v0'
-  #     with:
-  #       credentials_json: '${{ secrets.GOOGLE_CLOUDRUN_CREDENTIALS }}'
+      # from https://github.com/google-github-actions/deploy-cloudrun#credentials
+      - id: 'authCloudRun'
+        uses: 'google-github-actions/auth@v0'
+        with:
+          credentials_json: '${{ secrets.GOOGLE_CLOUDRUN_CREDENTIALS }}'
 
-  #   # docs: https://github.com/marketplace/actions/deploy-to-cloud-run
-  #   - name: 'Deploy to Cloud Run'
-  #     uses: 'google-github-actions/deploy-cloudrun@v0'
-  #     with:
-  #       image: ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
-  #       service: ${{env.SERVICE}}
-  #       region: ${{env.REGION}}
+      # docs: https://github.com/marketplace/actions/deploy-to-cloud-run
+      - name: 'Deploy to Cloud Run'
+        uses: 'google-github-actions/deploy-cloudrun@v0'
+        with:
+          image: ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
+          service: ${{env.SERVICE}}
+          region: ${{env.REGION}}
