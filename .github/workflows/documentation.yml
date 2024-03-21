@@ -28,13 +28,13 @@ jobs:
       # - name: Build the Docker image
       #   run: docker build . --file ./docs/DocsDockerfile --tag ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
 
-
-      # from https://github.com/google-github-actions/deploy-cloudrun#credentials
-      - id: 'auth'
-        uses: 'google-github-actions/auth@v2'
+      - uses: 'google-github-actions/auth@v2'
         with:
-          credentials_json: '${{ secrets.GOOGLE_ARTIFACTREGISTY_CREDENTIALS }}'
+          project_id: ${{env.PROJECT_ID}}
+          workload_identity_provider: 'projects/797139687884/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
+          service_account: 'artifactregistry@nxopendocumentationdocker.iam.gserviceaccount.com'
           token_format: 'access_token'
+
 
       # This example runs "docker login" directly to Container Registry.
       - name: Docker login
