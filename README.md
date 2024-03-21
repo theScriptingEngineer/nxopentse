@@ -47,6 +47,10 @@ So there is no need to manually build an upload to either test.pypi or pypi
 ### tagging
 ``` git tag -a v0.0.1a1 -m "pre-release - can be used. Partially tested. Will still contain lots of bugs" ```
 > **NOTE:** Tags don't get pushed automatically. Use ```git push origin --tags```
+> 
+> 
+> or configure "git.followTagsWhenSync": true
+> preferences -> extensions -> git -> check Follow tags when sync
 
 workflow (VSCode):
   - increase the version number so that it doesn't clash with test.pypi or pypi
