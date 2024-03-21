@@ -40,11 +40,15 @@ General tools which can be used in different NX applications.
 ### SC2212:
 
 
-## dev
+## development
 There is a build pipeline in Github which automatically publishes to test.pypi and pypi (the latter only on tagged commits)
 So there is no need to manually build an upload to either test.pypi or pypi
-The below is just for reference
 
+### tagging
+``` git tag -a v0.0.1a1 -m "pre-release - can be used. Partially tested. Will still contain lots of bugs" ```
+> **NOTE:** Tags don't get pushed automatically. Use ```git push origin --tags```
+
+### build the package manually (for reference only)
 install locally by navigating to folder and then
 ```pip install .```
 
@@ -53,12 +57,12 @@ uninstall:
 
 update: uninstall and reinstall
 
-### build the package manually
 required installations:
 ```
 python -m pip install --upgrade twine
 pip install build
 ```
+
 Building the package:
 ```
 python -m build
