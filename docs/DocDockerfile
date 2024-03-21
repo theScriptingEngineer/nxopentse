@@ -1,0 +1,5 @@
+# using Nginx to serve, which give a versy small footprint
+FROM nginx:stable-alpine
+
+# start with theScriptingEngineer, which also contains the articles and then add the NX ones
+COPY /docs/build/html /usr/share/nginx/html/
