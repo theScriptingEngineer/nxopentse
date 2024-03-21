@@ -48,3 +48,24 @@ uninstall:
 ```pip uninstall nxopentse```
 
 update: uninstall and reinstall
+
+### build the package
+required installations:
+```
+python -m pip install --upgrade twine
+pip install build
+```
+Building the package:
+```
+python -m build
+```
+
+manually publish to test.pypi:
+```
+py -m twine upload --repository testpypi dist/*
+```
+
+manually publish to pypi:
+```
+py -m twine upload dist/*
+```
