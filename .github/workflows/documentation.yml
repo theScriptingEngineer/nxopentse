@@ -23,7 +23,7 @@ jobs:
           pip install sphinx sphinx_rtd_theme myst_parser
       - name: Sphinx build
         run: |
-          sphinx-build doc _build
+          sphinx-build -M html docs/source/ docs/build/
 
 
   docker-build:
