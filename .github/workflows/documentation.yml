@@ -31,6 +31,8 @@ jobs:
     name: Build Docker image
     runs-on: ubuntu-latest
     steps:
+      - name: list files
+        run: ls -l
       - name: Build the Docker image
         run: docker build . --file ./docs/DocsDockerfile --tag ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
       # END - Build the Docker image
