@@ -62,13 +62,13 @@ jobs:
     
       # from https://github.com/google-github-actions/deploy-cloudrun#credentials
       - id: 'authCloudRun'
-        uses: 'google-github-actions/auth@v0'
+        uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: '${{ secrets.GOOGLE_CLOUDRUN_CREDENTIALS }}'
 
       # docs: https://github.com/marketplace/actions/deploy-to-cloud-run
       - name: 'Deploy to Cloud Run'
-        uses: 'google-github-actions/deploy-cloudrun@v0'
+        uses: 'google-github-actions/deploy-cloudrun@v2'
         with:
           image: ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
           service: ${{env.SERVICE}}
