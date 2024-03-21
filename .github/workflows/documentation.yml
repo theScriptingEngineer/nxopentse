@@ -45,7 +45,7 @@ jobs:
   #         name: docs
   #         path: docs/build  # Specify the directory to download the documentation to
       - name: list files
-        run: ls -l docs/build
+        run: ls -l docs
       - name: list files
         run: ls -l
       - name: Build the Docker image
