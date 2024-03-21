@@ -1,7 +1,7 @@
 # should split this file up into a fem/afem and sim functionality file
 
 import os
-from typing import List, cast, Optional, Union
+from typing import List, cast, Optional, Union, Dict
 
 import NXOpen
 import NXOpen.CAE
@@ -148,7 +148,7 @@ def create_node(label: int, x_coordinate: float, y_coordinate: float, z_coordina
     return cast(NXOpen.CAE.FENode, node)
 
 
-def CreateNodalConstraint(node_label: int, dx: float, dy : float, dz: float, rx: float, ry: float, rz: float, constraint_name: str) -> NXOpen.CAE.SimBC:
+def create_nodal_constraint(node_label: int, dx: float, dy : float, dz: float, rx: float, ry: float, rz: float, constraint_name: str) -> NXOpen.CAE.SimBC:
     """This function creates a constraint on a node. For free, set the value to -777777
         THis is minus 7, six times. Which equals 42 ;) You got to love the NX developers humor.
     
@@ -175,8 +175,12 @@ def CreateNodalConstraint(node_label: int, dx: float, dy : float, dz: float, rx:
     -------
     NXOpen.CAE.SimBC
         Returns the created constraint.
-    """
 
+    Notes
+    -----
+    Tested in SC2212
+
+    """
     # check if started from a SimPart, returning othwerwise
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
     if not isinstance(base_part, NXOpen.CAE.SimPart):
@@ -190,15 +194,18 @@ def CreateNodalConstraint(node_label: int, dx: float, dy : float, dz: float, rx:
     sim_simulation.ActiveSolution = NXOpen.CAE.SimSolution.Null
 
     # check if constaint already exists
-    sim_constraints: List[NXOpen.CAE.SimConstraint] = sim_simulation.Constraints
-    sim_constraint: NXOpen.CAE.SimConstraint = [item for item in sim_constraints if item.Name.lower() == constraint_name.lower()]
+    sim_constraints: List[NXOpen.CAE.SimConstraint] = [item for item in sim_simulation.Constraints]
+    sim_constraint: List[NXOpen.CAE.SimConstraint] = [item for item in sim_constraints if item.Name.lower() == constraint_name.lower()]
     sim_bc_builder: NXOpen.CAE.SimBCBuilder
-    if len(sim_constraint == 0):
+    if len(sim_constraint) == 0:
         # no constraint with the given name, thus creating the constrain
         sim_bc_builder = sim_simulation.CreateBcBuilderForConstraintDescriptor("UserDefinedDisplacementConstraint", constraint_name, 0)
+    elif len(sim_constraint) == 1:
+        the_lw.WriteFullline(f'A constraint with the name {constraint_name} already exists therefore editing the constraint.')
+        sim_bc_builder = sim_simulation.CreateBcBuilderForBc(sim_constraint[0])
     else:
-        # a constraint with the given name already exists therefore editing the constraint
-        sim_bc_builder = sim_simulation.CreateBcBuilderForBc(sim_constraint)
+        the_lw.WriteFullline(f'Multiple constraints with the name {constraint_name} exist. This function requires unique names and is not case sensitive.')
+        raise ValueError(f'Multiple constraints with the name {constraint_name} exist.')
 
     property_table: NXOpen.CAE.PropertyTable = sim_bc_builder.PropertyTable
     field_expression1: NXOpen.Fields.FieldExpression = property_table.GetScalarFieldPropertyValue("DOF1")
@@ -344,14 +351,93 @@ def create_nodal_force(node_label: int, fx: float, fy: float, fz: float, force_n
     expression3: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(fz), unit1)
 
     field_manager: NXOpen.Fields.FieldManager = cast(NXOpen.Fields.FieldManager, sim_part.FindObject("FieldManager"))
-    property_table.SetTablePropertyWithoutValue("CylindricalMagnitude")
-    property_table.SetVectorFieldWrapperPropertyValue("CylindricalMagnitude", NXOpen.Fields.VectorFieldWrapper.NotSet)
-    property_table.SetTablePropertyWithoutValue("SphericalMagnitude")
-    property_table.SetVectorFieldWrapperPropertyValue("SphericalMagnitude", NXOpen.Fields.VectorFieldWrapper.NotSet)
-    property_table.SetTablePropertyWithoutValue("DistributionField")
-    property_table.SetScalarFieldWrapperPropertyValue("DistributionField", NXOpen.Fields.ScalarFieldWrapper.NotSet)
-    property_table.SetTablePropertyWithoutValue("ComponentsDistributionField")
-    property_table.SetVectorFieldWrapperPropertyValue("ComponentsDistributionField", NXOpen.Fields.VectorFieldWrapper.NotSet)
+    # property_table.SetTablePropertyWithoutValue("CylindricalMagnitude")
+    # property_table.SetVectorFieldWrapperPropertyValue("CylindricalMagnitude", NXOpen.Fields.VectorFieldWrapper.NotSet)
+    # property_table.SetTablePropertyWithoutValue("SphericalMagnitude")
+    # property_table.SetVectorFieldWrapperPropertyValue("SphericalMagnitude", NXOpen.Fields.VectorFieldWrapper.NotSet)
+    # property_table.SetTablePropertyWithoutValue("DistributionField")
+    # property_table.SetScalarFieldWrapperPropertyValue("DistributionField", NXOpen.Fields.ScalarFieldWrapper.NotSet)
+    # property_table.SetTablePropertyWithoutValue("ComponentsDistributionField")
+    # property_table.SetVectorFieldWrapperPropertyValue("ComponentsDistributionField", NXOpen.Fields.VectorFieldWrapper.NotSet)
+    expressions: List[NXOpen.Expression] = [NXOpen.Expression.Null] * 3 
+    expressions[0] = expression1
+    expressions[1] = expression2
+    expressions[2] = expression3
+    vector_field_wrapper: NXOpen.Fields.VectorFieldWrapper = field_manager.CreateVectorFieldWrapperWithExpressions(expressions)
+    
+    property_table.SetVectorFieldWrapperPropertyValue("CartesianMagnitude", vector_field_wrapper)
+    
+    sim_bc: NXOpen.CAE.SimBC = sim_bc_builder.CommitAddBc()
+    
+    sim_bc_builder.Destroy()
+
+    return sim_bc
+
+
+def create_nodal_moment(node_label: int, mx: float, my: float, mz: float, moment_name: str) -> NXOpen.CAE.SimBC:
+    """This function creates a force on a node.
+    
+    Parameters
+    ----------
+    node_label: int
+        The node label to appy the force to.
+    mx: float
+        the moment in global x-direction in NewtonMillimeter.
+    my: float
+        the moment in global y-direction in NewtonMillimeter.
+    mz: float
+        the moment in global z-direction in NewtonMillimeter.
+    force_name: str
+        The name of the force for the GUI.
+
+    Returns
+    -------
+    NXOpen.CAE.SimBC
+        Returns the created force.
+    """
+    base_part: NXOpen.BasePart = the_session.Parts.BaseWork
+    # check if started from a SimPart, returning othwerwise
+    if not isinstance(base_part, NXOpen.CAE.SimPart):
+        the_lw.WriteFullline("CreateNodalForce needs to start from a .sim file. Exiting")
+        return
+    # we are now sure that basePart is a SimPart
+    sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, base_part) # explicit casting makes it clear
+    
+    sim_simulation: NXOpen.CAE.SimSimulation = sim_part.Simulation
+    # make the active solution inactive, so load is not automatically added to active subcase
+    sim_simulation.ActiveSolution = NXOpen.CAE.SimSolution.Null
+
+    # check if a nodal force with that name already exists. If it does, update, if not create it
+    sim_loads: List[NXOpen.CAE.SimLoad] = sim_part.Simulation.Loads
+    sim_load: NXOpen.CAE.SimLoad = [item for item in sim_loads if item.Name.lower() == moment_name.lower()]
+    if len(sim_load) == 0:
+        # load not found
+        sim_bc_builder: NXOpen.CAE.SimBCBuilder = sim_simulation.CreateBcBuilderForLoadDescriptor("ComponentMomentField", moment_name, 0) # overloaded function is unknow to intellisense
+    else:
+        sim_bc_builder: NXOpen.CAE.SimBCBuilder = sim_simulation.CreateBcBuilderForBc(sim_load[0])
+    
+    # define the force
+    property_table: NXOpen.CAE.PropertyTable = sim_bc_builder.PropertyTable
+    set_manager: NXOpen.CAE.SetManager = sim_bc_builder.TargetSetManager
+    
+    objects: List[NXOpen.CAE.SetObject] = [NXOpen.CAE.SetObject.Obj] * 1
+    objects[0] = NXOpen.CAE.SetObject()
+    fe_node: NXOpen.CAE.FENode = sim_part.Simulation.Femodel.FenodeLabelMap.GetNode(node_label)
+    if fe_node is None:
+        the_lw.WriteFullline("CreateNodalMoment: node with label " + str(node_label) + " not found in the model. Moment not created.")
+        return
+
+    objects[0].Obj = fe_node
+    objects[0].SubType = NXOpen.CAE.CaeSetObjectSubType.NotSet
+    objects[0].SubId = 0
+    set_manager.SetTargetSetMembers(0, NXOpen.CAE.CaeSetGroupFilterType.Node, objects)
+    
+    unit1: NXOpen.Unit = sim_part.UnitCollection.FindObject("NewtonMilliMeter")
+    expression1: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(mx), unit1)
+    expression2: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(my), unit1)
+    expression3: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(mz), unit1)
+
+    field_manager: NXOpen.Fields.FieldManager = cast(NXOpen.Fields.FieldManager, sim_part.FindObject("FieldManager"))
     expressions: List[NXOpen.Expression] = [NXOpen.Expression.Null] * 3 
     expressions[0] = expression1
     expressions[1] = expression2
@@ -513,7 +599,7 @@ def add_load_to_subcase(solution_name: str, subcase_name: str, load_name: str) -
     # check if started from a SimPart, returning othwerwise
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
     if not isinstance(base_part, NXOpen.CAE.SimPart):
-        the_lw.WriteFullline("AddLoadToSubcase needs to start from a .sim file. Exiting")
+        the_lw.WriteFullline("add_load_to_subcase needs to start from a .sim file. Exiting")
         return
     # we are now sure that basePart is a SimPart
     sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, base_part) # explicit casting makes it clear
@@ -523,7 +609,7 @@ def add_load_to_subcase(solution_name: str, subcase_name: str, load_name: str) -
     sim_solution: NXOpen.CAE.SimSolution = get_solution(solution_name)
     if sim_solution == None:
         # Solution not found
-        the_lw.WriteFullline("AddLoadToSubcase: Solution with name " + solution_name + " not found!")
+        the_lw.WriteFullline("add_load_to_subcase: Solution with name " + solution_name + " not found!")
         return
     
     # check if the subcase exists in the given solution
@@ -534,14 +620,14 @@ def add_load_to_subcase(solution_name: str, subcase_name: str, load_name: str) -
             sim_solution_step = sim_solution.GetStepByIndex(i)
     
     if sim_solution_step == None:
-        the_lw.WriteFullline("AddLoadToSubcase: subcase with name " + subcase_name + " not found in solution " + solution_name + "!")
+        the_lw.WriteFullline("add_load_to_subcase: subcase with name " + subcase_name + " not found in solution " + solution_name + "!")
         return
 
     # get the requested load if it exists
     sim_load: List[NXOpen.CAE.SimLoad] = [item for item in sim_simulation.Loads if item.Name.lower() == load_name.lower()]
     if len(sim_load) == 0:
         # Load not found
-        the_lw.WriteFullline("AddLoadToSubcase: Load with name " + load_name + " not found!")
+        the_lw.WriteFullline("add_load_to_subcase: Load with name " + load_name + " not found!")
         return
     
     sim_solution_step.AddBc(sim_load[0])
@@ -556,6 +642,10 @@ def add_constraint_to_solution(solution_name: str, constraint_name: str) -> None
         The name of the solution to add the constraint to
     constraint_name: str
         The name of the constraint to add
+
+    Notes
+    -----
+    Tested in SC2212
     """
     # check if started from a SimPart, returning othwerwise
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
@@ -574,14 +664,75 @@ def add_constraint_to_solution(solution_name: str, constraint_name: str) -> None
         return
 
     # get the requested Constraint if it exists
-    sim_constraint: List[NXOpen.CAE.SimSolution] = [item for item in sim_simulation.Solutions if item.Name.lower() == solution_name.lower()]
+    sim_constraints: List[NXOpen.CAE.SimConstraint] = [item for item in sim_simulation.Constraints]
+    sim_constraint: List[NXOpen.CAE.SimConstraint] = [item for item in sim_constraints if item.Name.lower() == constraint_name.lower()]
     if len(sim_constraint) == 0:
         # Constraint with the given name not found
         the_lw.WriteFullline("AddConstraintToSolution: constraint with name " + constraint_name + " not found!")
         return
 
     # add constraint to solution
-    sim_solution[0].AddBc(sim_constraint[0])
+    sim_solution.AddBc(sim_constraint[0])
+
+
+def add_constraint_to_subcase(solution_name: str, subcase_name, constraint_name: str) -> None:
+    """This function adds a constraint with the given name to subcase witht he given name within the solution with the given name.
+    
+    Parameters
+    ----------
+    solution_name: str
+        The name of the solution to add the constraint to
+    subcase_name: str
+        The name of the subcase within the solution to add the constraint to
+    constraint_name: str
+        The name of the constraint to add
+
+    Notes
+    -----
+    Tested in SC2212
+    """
+    # check if started from a SimPart, returning othwerwise
+    base_part: NXOpen.BasePart = the_session.Parts.BaseWork
+    if not isinstance(base_part, NXOpen.CAE.SimPart):
+        the_lw.WriteFullline(add_constraint_to_subcase.__name__ + " needs to start from a .sim file. Exiting")
+        return
+    # we are now sure that basePart is a SimPart
+    sim_sart: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, base_part) # explicit casting makes it clear
+    sim_simulation: NXOpen.CAE.SimSimulation = sim_sart.Simulation
+
+    # get the requested solution if it exists
+    sim_solution: NXOpen.CAE.SimSolution = get_solution(solution_name)
+    if sim_solution == None:
+        # Solution with the given name not found
+        the_lw.WriteFullline(add_constraint_to_subcase.__name__ + ": Solution with name " + solution_name + " not found!")
+        return
+
+    # check if the subcase exists in the given solution
+    sim_solution_step: Optional[NXOpen.CAE.SimSolutionStep] = None
+    for i in range(sim_solution.StepCount):
+        if sim_solution.GetStepByIndex(i).Name.lower() == subcase_name.lower():
+            # subcase exists
+            sim_solution_step = sim_solution.GetStepByIndex(i)
+    
+    if sim_solution_step == None:
+        the_lw.WriteFullline(add_constraint_to_subcase.__name__ + ": subcase with name " + subcase_name + " not found in solution " + solution_name + "!")
+        return
+
+    # get the requested Constraint if it exists
+    sim_constraints: List[NXOpen.CAE.SimConstraint] = [item for item in sim_simulation.Constraints]
+    sim_constraint: List[NXOpen.CAE.SimConstraint] = [item for item in sim_constraints if item.Name.lower() == constraint_name.lower()]
+    if len(sim_constraint) == 0:
+        # Constraint with the given name not found
+        the_lw.WriteFullline(add_constraint_to_subcase.__name__ + ": constraint with name " + constraint_name + " not found!")
+        return
+
+    # add constraint to solution
+    try:
+        # don't know how to check for constraintgroup, so just try to create it
+        sim_solution_step.CreateConstraintGroup()
+    except:
+        pass
+    sim_solution_step.AddBc(sim_constraint[0])
 
 
 def create_subcase(solution_name: str, subcase_name: str) -> Optional[NXOpen.CAE.SimSolutionStep]:
@@ -599,6 +750,11 @@ def create_subcase(solution_name: str, subcase_name: str) -> Optional[NXOpen.CAE
     -------
     NXOpen.CAE.SimSolutionStep or None
         Returns the created subcase if created. None otherwise
+
+    Notes
+    -----
+    Tested in SC2212
+
     """
     # check if started from a SimPart, returning othwerwise
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
@@ -618,10 +774,11 @@ def create_subcase(solution_name: str, subcase_name: str) -> Optional[NXOpen.CAE
         if sim_solution.GetStepByIndex(i).Name.lower() == subcase_name.lower():
             # subcase already exists
             the_lw.WriteFullline("CreateSubcase: subcase with name " + subcase_name + " already exists in solution " + solution_name + "!")
+            the_lw.WriteFullline("Proceeding with the existing one.")
             return sim_solution.GetStepByIndex(i)
     
     # create the subcase with the given name but don't activate it
-    return sim_solution[0].CreateStep(0, False, subcase_name)
+    return sim_solution.CreateStep(0, False, subcase_name)
 
 
 def create_solution(solution_name: str, output_requests: str = "Structural Output Requests1", bulk_data_echo_request: str = "Bulk Data Echo Request1") -> Optional[NXOpen.CAE.SimSolution]:
@@ -642,6 +799,11 @@ def create_solution(solution_name: str, output_requests: str = "Structural Outpu
     -------
     NXOpen.CAE.SimSolution or None
         Returns the created subcase if created. The existing one with this name and updated if it exists
+    
+    Notes
+    -----
+    Tested with only solution name in SC2212.
+
     """
     # check if started from a SimPart, returning othwerwise
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
@@ -672,7 +834,7 @@ def create_solution(solution_name: str, output_requests: str = "Structural Outpu
             # default does also not exist. Create it
             bulk_data_property_table = sim_part.ModelingObjectPropertyTables.CreateModelingObjectPropertyTable("Bulk Data Echo Request", "NX NASTRAN - Structural", "NX NASTRAN", "Bulk Data Echo Request1", 1000)
 
-    property_table.SetNamedPropertyTablePropertyValue("Bulk Data Echo Request", bulk_data_property_table)
+    property_table.SetNamedPropertyTablePropertyValue("Bulk Data Echo Request", bulk_data_property_table[0])
 
     # Look for a ModelingObjectPropertyTable with the given name or the default name "Structural Output Requests1"
     output_requests_property_table: List[NXOpen.CAE.ModelingObjectPropertyTable] = [item for item in sim_part.ModelingObjectPropertyTables if item.Name.lower() == output_requests.lower()]
@@ -688,7 +850,7 @@ def create_solution(solution_name: str, output_requests: str = "Structural Outpu
             output_requests_property_table.PropertyTable.SetIntegerPropertyValue("Stress - Location", 1)
 
 
-    property_table.SetNamedPropertyTablePropertyValue("Output Requests", output_requests_property_table)
+    property_table.SetNamedPropertyTablePropertyValue("Output Requests", output_requests_property_table[0])
 
     return sim_solution
 
@@ -724,3 +886,163 @@ def get_solution(solution_name: str) -> Union[NXOpen.CAE.SimSolution, None]:
     
     # return the first simSolution with the requested name
     return sim_solution[0]
+
+
+def set_solution_property(solution_name: str, property_name: str, property_value: Union[str, int]):
+    """
+    Set a property value for a solution.
+
+    Parameters
+    ----------
+    solution_name : str
+        The name of the solution to set the property for.
+
+    property_name : str
+        The name of the property to set.
+
+    property_value : Union[str, int]
+        The value to set for the property. It can be either a string or an integer.
+
+    Raises
+    ------
+    TypeError
+        If `property_value` is not a string or an integer.
+    
+    Examples
+    --------
+    set_solution_property("MySolution", "sdirectory", "C:\\NXSolveScratch\\")
+    set_solution_property("MySolution", "parallel", 8)
+    set_solution_property("MySolution", "solver command window", 1)
+
+    Notes
+    -----
+    Tested in SC2212
+
+    """
+    solution = get_solution(solution_name)
+    solver_options_property_table: NXOpen.CAE.PropertyTable = solution.SolverOptionsPropertyTable
+    if type(property_value) is str:
+        solver_options_property_table.SetStringPropertyValue(property_name, property_value)
+    if type(property_value) is int:
+        solver_options_property_table.SetIntegerPropertyValue(property_name, property_value)
+
+
+def get_nodes_in_group(group_name: str) -> Dict[int, NXOpen.CAE.FENode]:
+    """
+    Retrieves nodes belonging to a specified group.
+
+    Parameters
+    ----------
+    group_name : str
+       The name of the group whose nodes are to be retrieved (not case sensitive)
+
+    Returns
+    -------
+    Dict[int, NXOpen.CAE.FENode]
+        An ordered dictionary mapping node labels to FENode objects.   
+
+    Raises
+    ------
+        ValueError: If the group with the specified name is not found or if multiple occurrences are found.
+
+    Notes
+    -----
+    Tested in SC2212
+
+    """
+    work_cae_part: NXOpen.CAE.CaePart = cast(NXOpen.CAE.CaePart, the_session.Parts.BaseWork)
+    groups: List[NXOpen.CAE.CaeGroup] = [item for item in work_cae_part.CaeGroups]
+    group: List[NXOpen.CAE.CaeGroup] = [item for item in groups if item.Name.strip().lower() == group_name.strip().lower()]
+    if len(group) == 0:
+        the_lw.WriteFullline(f'Group with name {group_name} not found.')
+        raise ValueError(f'Group with name {group_name} not found.')
+    elif len(group) != 1:
+        the_lw.WriteFullline(f'Multiple occurences of {group_name} found. Note that the names are case insensitive.')
+        raise ValueError(f'Multiple occurences of {group_name} found. Note that the names are case insensitive.')
+    
+    nodes_in_group: Dict[int, NXOpen.CAE.FENode] = {}
+    for object in group[0].GetEntities():
+        if type(object) == NXOpen.CAE.FENode:
+            node = cast(NXOpen.CAE.FENode, object)
+            nodes_in_group[node.Label] = node
+    
+    
+    return dict(sorted(nodes_in_group.items()))
+
+
+def create_displacement_field(field_name: str, file_name: str) -> NXOpen.Fields.FieldTable:
+    """
+    Creates a displacement field which can be used in an enforced displacement constraint.
+    When creating a break-out model or submodel 
+
+    Parameters
+    ----------
+    field_name : str
+       The name to give to the field
+
+    file_name : str
+       Full path of the file with the nodal coordinates and displacement values
+       
+    Returns
+    -------
+    NXOpen.Fields.FieldTable
+        The field just created
+
+    Notes
+    -----
+    The file with coordinates and displacements can be generated with write_submodel_data_to_file
+    Tested in SC2212
+
+    """
+    work_sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, the_session.Parts.BaseWork)
+    field_manager = work_sim_part.FieldManager
+    spation_map_builder = field_manager.CreateSpatialMapBuilder(NXOpen.Fields.SpatialMap.Null)
+
+    unit = spation_map_builder.FaceTolerance.Units
+    name_variable_1 = field_manager.GetNameVariable("length_1", "Length")
+    field_variable_1 = field_manager.CreateDependentVariable(NXOpen.Fields.Field.Null, name_variable_1, unit, NXOpen.Fields.FieldVariable.ValueType.Real)
+    name_variable_2 = field_manager.GetNameVariable("length_2", "Length")
+    field_variable_2 = field_manager.CreateDependentVariable(NXOpen.Fields.Field.Null, name_variable_2, unit, NXOpen.Fields.FieldVariable.ValueType.Real)
+    name_variable_3 = field_manager.GetNameVariable("length_3", "Length")
+    field_variable_3 = field_manager.CreateDependentVariable(NXOpen.Fields.Field.Null, name_variable_3, unit, NXOpen.Fields.FieldVariable.ValueType.Real)
+
+    name_variable_4 = field_manager.GetNameVariable("x", "Length")
+    field_variable_4 = field_manager.CreateIndependentVariable(NXOpen.Fields.Field.Null, name_variable_4, unit, NXOpen.Fields.FieldVariable.ValueType.Real, False, True, 1e+19, False, True, 9.9999999999999998e-20, False, 2, False, 1.0)
+    
+    name_variable_5 = field_manager.GetNameVariable("y", "Length")
+    field_variable_5 = field_manager.CreateIndependentVariable(NXOpen.Fields.Field.Null, name_variable_5, unit, NXOpen.Fields.FieldVariable.ValueType.Real, False, True, 1e+19, False, True, 9.9999999999999998e-20, False, 2, False, 1.0)
+    
+    name_variable_6 = field_manager.GetNameVariable("z", "Length")
+    field_variable_6 = field_manager.CreateIndependentVariable(NXOpen.Fields.Field.Null, name_variable_6, unit, NXOpen.Fields.FieldVariable.ValueType.Real, False, True, 1e+19, False, True, 9.9999999999999998e-20, False, 2, False, 1.0)
+
+    spatial_map_builder = field_manager.CreateSpatialMapBuilder(NXOpen.Fields.SpatialMap.Null)
+    spatial_map_builder.MapType = NXOpen.Fields.SpatialMap.TypeEnum.Global
+    spatial_map: NXOpen.Fields.SpatialMap = spatial_map_builder.Commit()
+
+    depVarArray2 = [NXOpen.Fields.FieldVariable.Null] * 3
+    depVarArray2[0] = field_variable_1
+    depVarArray2[1] = field_variable_2
+    depVarArray2[2] = field_variable_3
+
+    indepVarArray2 = [NXOpen.Fields.FieldVariable.Null] * 3 
+    indepVarArray2[0] = field_variable_4
+    indepVarArray2[1] = field_variable_5
+    indepVarArray2[2] = field_variable_6
+
+    import_table_data_builder = field_manager.CreateImportTableDataBuilder(field_name, indepVarArray2, depVarArray2)
+    import_table_data_builder.ImportFile = file_name
+    field_table: NXOpen.Fields.FieldTable = import_table_data_builder.Commit()
+    field_table.ParameterizeIndependentDomain = False
+    field_table.DelayedUpdate = False
+    field_table.CreateInterpolatorOnCommit = True
+    field_table.InterpolationMethod = NXOpen.Fields.FieldEvaluator.InterpolationEnum.Delaunay3dAccurate
+    field_table.ValuesOutsideTableInterpolation = NXOpen.Fields.FieldEvaluator.ValuesOutsideTableInterpolationEnum.Constant
+    field_table.CreateInterpolator()
+    field_table.SetSpatialMap(spatial_map)
+    
+    import_table_data_builder.Destroy()
+
+    return field_table
+
+
+

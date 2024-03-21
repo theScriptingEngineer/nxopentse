@@ -4,7 +4,6 @@ This package contains functions which you can use in your own scripts, so you do
 
 ## NX versions
 ### SC2212:
-  - the_uf_session: NXOpen.UF.UFSession = NXOpen.UF.UFSession.GetUFSession() -> AttributeError: module 'NXOpen' has no attribute 'UF'
 
 
 ## dev

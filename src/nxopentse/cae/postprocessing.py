@@ -6,7 +6,10 @@ import NXOpen
 import NXOpen.CAE
 import NXOpen.UF
 import NXOpen.Fields
-from typing import List, cast, Tuple
+from typing import List, cast, Tuple, Dict
+
+from .preprocessing import get_nodes_in_group
+from ..tools import create_full_path
 
 the_session = NXOpen.Session.GetSession()
 base_part: NXOpen.BasePart = the_session.Parts.BaseWork
@@ -148,7 +151,14 @@ def get_result_types(post_inputs: List[PostInput], solution_results: List[NXOpen
         base_iterations: List[NXOpen.CAE.BaseIteration] = loadCase.GetIterations()
         iteration: NXOpen.CAE.Iteration = cast(NXOpen.CAE.Iteration, base_iterations[post_inputs[i]._iteration - 1]) # user starts counting at 1
         base_result_types: List[NXOpen.CAE.BaseResultType] = iteration.GetResultTypes()
-        base_result_type: List[NXOpen.CAE.ResultType] = [item for item in base_result_types if item.Name.lower().strip() == post_inputs[i]._resultType.lower().strip()][0]
+        try:
+            base_result_type: List[NXOpen.CAE.ResultType] = [item for item in base_result_types if item.Name.lower().strip() == post_inputs[i]._resultType.lower().strip()][0]
+        except Exception as e:
+            the_lw.WriteFullline("Error in input " + str(post_inputs[i]))
+            the_lw.WriteFullline("ResultType " + post_inputs[i]._resultType + "not found in iteration number " + str(post_inputs[i]._iteration) + " in SubCase with number " + str(post_inputs[i]._subcase) + " in solution with name " + post_inputs[i]._solution)
+            for result_type in base_result_types:
+                the_lw.WriteFullline(result_type.Name)
+            raise ValueError("ResultType " + post_inputs[i]._resultType + "not found in iteration number " + str(post_inputs[i]._iteration) + " in SubCase with number " + str(post_inputs[i]._subcase) + " in solution with name " + post_inputs[i]._solution)
         result_types[i] = cast(NXOpen.CAE.ResultType, base_result_type)
     
     return result_types
@@ -197,35 +207,6 @@ def get_sim_result_reference(solution_name: str, reference_type: str = "Structur
         return None
     simResultReference: NXOpen.CAE.SimResultReference = cast(NXOpen.CAE.SimResultReference, simSolution.Find(reference_type))
     return simResultReference
-
-
-def create_full_path(file_name: str, extension: str = ".unv") -> str:
-    """This function takes a filename and adds the .unv extension and path of the part if not provided by the user.
-    If the fileName contains an extension, this function leaves it untouched, othwerwise adds .unv as extension.
-    If the fileName contains a path, this function leaves it untouched, otherwise adds the path of the BasePart as the path.
-    Undefined behaviour if basePart has not yet been saved (eg FullPath not available)
-
-    Parameters
-    ----------
-    file_name: str
-        The filename with or without path and .unv extension.
-
-    Returns
-    -------
-    str
-        A string with .unv extension and path of the basePart if the fileName parameter did not include a path.
-    """
-    # check if an extension is included
-    if os.path.splitext(file_name)[1] == "":
-        file_name = file_name + extension
-
-    # check if path is included in fileName, if not add path of the .sim file
-    unv_file_path: str = os.path.dirname(file_name)
-    if unv_file_path == "":
-        # if the .sim file has never been saved, the next will give an error
-        file_name = os.path.join(os.path.dirname(base_part.FullPath), file_name)
-
-    return file_name
 
 
 def check_post_input(post_inputs: List[PostInput]) -> None:
@@ -277,11 +258,13 @@ def check_post_input(post_inputs: List[PostInput]) -> None:
 
         # Does the ResultType exist?
         base_result_types: List[NXOpen.CAE.BaseResultType] = iteration.GetResultTypes()
-        base_result_type: List[NXOpen.CAE.BaseResultType] = [item for item in base_result_types if item.Name.lower().strip() == post_inputs[i]._resultType.lower().strip]
+        base_result_type: List[NXOpen.CAE.BaseResultType] = [item for item in base_result_types if item.Name.lower().strip() == post_inputs[i]._resultType.lower().strip()]
         if len(base_result_type) == 0:
             # resulttype does not exist
             the_lw.WriteFullline("Error in input " + str(post_inputs[i]))
             the_lw.WriteFullline("ResultType " + post_inputs[i]._resultType + "not found in iteration number " + str(post_inputs[i]._iteration) + " in SubCase with number " + str(post_inputs[i]._subcase) + " in solution with name " + post_inputs[i]._solution)
+            for result_type in base_result_types:
+                the_lw.WriteFullline(result_type.UserName)
             raise ValueError("ResultType " + post_inputs[i]._resultType + "not found in iteration number " + str(post_inputs[i]._iteration) + " in SubCase with number " + str(post_inputs[i]._subcase) + " in solution with name " + post_inputs[i]._solution)
 
 
@@ -362,7 +345,7 @@ def get_full_result_names(post_inputs: List[PostInput], solution_results: List[N
     List[str]
         List of string with each representation.
     """
-    full_result_names: List[str] = [str] * len(post_inputs)
+    full_result_names: List[str] = [""] * len(post_inputs)
     for i in range(len(post_inputs)):
         full_result_names[i] = full_result_names[i] + solution_results[i].Name
         base_load_cases: List[NXOpen.CAE.BaseLoadcase] = solution_results[i].GetLoadcases()
@@ -397,12 +380,12 @@ def combine_results(post_inputs: List[PostInput], formula: str, companion_result
         # internal raised exceptions are raised as valueError
         the_lw.WriteFullline("Did not execute CombineResults due to input error. Please check the previous messages.")
         # we still return the tehcnical message as an additional log
-        the_lw.WriteFullline(e)
+        the_lw.WriteFullline(str(e))
         return
     except:
         the_lw.WriteFullline("Did not execute CombineResults due to general error. Please check the previous messages.")
         # we still return the tehcnical message as an additional log
-        the_lw.WriteFullline(e)
+        the_lw.WriteFullline(str(e))
         return
     
     # Make sure the file is complete with path and extension
@@ -469,7 +452,7 @@ def combine_results(post_inputs: List[PostInput], formula: str, companion_result
                 
     except Exception as e:
         the_lw.WriteFullline("Error in CombineResults:")
-        the_lw.WriteFullline(e)
+        the_lw.WriteFullline(str(e))
         raise
 
     finally:
@@ -499,12 +482,12 @@ def export_result(post_input: PostInput, unv_file_name: str, si_units: bool = Fa
         # internal raised exceptions are raised as valueError
         the_lw.WriteFullline("Did not execute ExportResult due to input error. Please check the previous messages.")
         # we still return the tehcnical message as an additional log
-        the_lw.WriteFullline(e)
+        the_lw.WriteFullline(str(e))
         return
     except:
         the_lw.WriteFullline("Did not execute ExportResult due to general error. Please check the previous messages.")
         # we still return the tehcnical message as an additional log
-        the_lw.WriteFullline(e)
+        the_lw.WriteFullline(str(e))
         return
     
     # Make sure the file is complete with path and extension
@@ -569,7 +552,7 @@ def export_result(post_input: PostInput, unv_file_name: str, si_units: bool = Fa
                 
     except Exception as e:
         the_lw.WriteFullline("Error in ExportResult:")
-        the_lw.WriteFullline(e)
+        the_lw.WriteFullline(str(e))
         raise
 
     finally:
@@ -591,12 +574,12 @@ def get_result_paramaters(result_types: List[NXOpen.CAE.BaseResultType], result_
         result_parameters.SetGenericResultType(result_types[i])
         result_parameters.SetShellSection(result_shell_section)
         result_parameters.SetResultComponent(result_component)
-        result_parameters.SetSelectedCoordinateSystem(NXOpen.CAE.Result.CoordinateSystem.NotSet, -1)
+        # result_parameters.SetSelectedCoordinateSystem(NXOpen.CAE.Result.CoordinateSystem.NotSet, -1)
         result_parameters.MakeElementResult(False)
 
         # components: List[NXOpen.CAE.Result.Component] = resultTypes[i].AskComponents()
-        result: Tuple[List[NXOpen.CAE.Result.Component], List[str]] = result_types[i].AskComponents()
-        unit: NXOpen.Unit = result_types[i].AskDefaultUnitForComponent(result[0][0]) # [0] for the list of componentns and another [0] for the first componentn
+        result: Tuple[List[str], List[NXOpen.CAE.Result.Component]] = result_types[i].AskComponents()
+        unit: NXOpen.Unit = result_types[i].AskDefaultUnitForComponent(result[1][0]) # [1] for the list of componentns and another [0] for the first componentn
         result_parameters.SetUnit(unit)
 
         result_parameters.SetAbsoluteValue(absolute)
@@ -608,6 +591,13 @@ def get_result_paramaters(result_types: List[NXOpen.CAE.BaseResultType], result_
 
 
 def envelope_results(post_inputs: List[PostInput], companion_result_name: str, unv_file_name: str, envelope_operation: NXOpen.CAE.ResultsManipulationEnvelopeBuilder.Operation, result_shell_section: NXOpen.CAE.Result.ShellSection, resultComponent: NXOpen.CAE.Result.Component, absolute: bool, solution_name: str = "") -> None:
+    """
+
+    Notes
+    -----
+    Only works in NX1980 or higher due to the use of NXOpen.CAE.ResultsManipulationEnvelopeBuilder
+    Tested in SC2212. Stil issue with companion result not automatically adding (but it gets created an can be added manually after a file close/reopen)
+    """
     if not isinstance(base_part, NXOpen.CAE.SimPart):
         the_lw.WriteFullline("ExportResult needs to start from a .sim file. Exiting")
         return
@@ -620,12 +610,12 @@ def envelope_results(post_inputs: List[PostInput], companion_result_name: str, u
         # internal raised exceptions are raised as valueError
         the_lw.WriteFullline("Did not execute ExportResult due to input error. Please check the previous messages.")
         # we still return the tehcnical message as an additional log
-        the_lw.WriteFullline(e)
+        the_lw.WriteFullline(str(e))
         return
-    except:
+    except Exception as e:
         the_lw.WriteFullline("Did not execute ExportResult due to general error. Please check the previous messages.")
         # we still return the tehcnical message as an additional log
-        the_lw.WriteFullline(e)
+        the_lw.WriteFullline(str(e))
         return
 
 
@@ -655,7 +645,7 @@ def envelope_results(post_inputs: List[PostInput], companion_result_name: str, u
         check_unv_file_name(unv_full_name)
     except ValueError as e:
         # ChechUnvFileName throws an error with the message containing the filename and the companion result.
-        the_lw.WriteFullline(e)
+        the_lw.WriteFullline(str(e))
         return
     
     # Load all results
@@ -690,22 +680,337 @@ def envelope_results(post_inputs: List[PostInput], companion_result_name: str, u
 
     # get the full result names for user feedback. Do this before the try catch block, otherwise the variable is no longer available
     full_result_names: List[str]  = get_full_result_names(post_inputs, solution_results)
+    operation_mapping = get_results_manipulation_envelope_builder_operation_names()
+    result_component_mapping = get_result_component_names()
+    result_shell_section_mapping = get_result_shell_section_names()
 
     try:
         results_manipulation_envelope_builder.Commit()
 
         # user feedback
-        the_lw.WriteFullline("Created an envelope for the following results for " + str(envelope_operation) + " " + str(resultComponent))
+        # the_lw.WriteFullline("Created an envelope for the following results for " + str(envelope_operation.name) + " " + str(resultComponent.name))
+        the_lw.WriteFullline("Created an envelope for the following results for " + operation_mapping[int(str(envelope_operation))] + " " + result_component_mapping[int(str(resultComponent))])
         for i in range(len(post_inputs)):
             the_lw.WriteFullline(full_result_names[i])
 
-        the_lw.WriteFullline("Section location: " + str(result_shell_section))
+        the_lw.WriteFullline("Section location: " + result_shell_section_mapping[int(str(result_shell_section))])
         the_lw.WriteFullline("Absolute: " + str(absolute))
     
     except ValueError as e:
         the_lw.WriteFullline("Error in EnvelopeResults!")
-        the_lw.WriteFullline(e)
+        the_lw.WriteFullline(str(e))
         raise e
     
     finally:
         results_manipulation_envelope_builder.Destroy()
+
+
+def envelope_solution(solution_name: str, result_type: str, companion_result_name: str, unv_file_name: str, envelope_operation: NXOpen.CAE.ResultsManipulationEnvelopeBuilder.Operation, result_shell_section: NXOpen.CAE.Result.ShellSection, result_component: NXOpen.CAE.Result.Component, absolute: bool = False):
+    """
+    Create an envelope for all subcases in the solution with the given parameters for enveloping.
+
+    Parameters
+    ----------
+    solution_name : str
+        The name of the solution containing the results.
+
+    result_type : str
+        The type of result to use for enveloping (e.g., 'Stress - Element-Nodal', 'Displacement - Nodal').
+
+    companion_result_name : str
+        The name of the companion result.
+
+    unv_file_name : str
+        The name of the UNV file to write the envelope results to.
+
+    envelope_operation : NXOpen.CAE.ResultsManipulationEnvelopeBuilder.Operation
+        The operation to perform for enveloping.
+
+    result_shell_section : NXOpen.CAE.Result.ShellSection
+        The shell section of the result.
+
+    result_component : NXOpen.CAE.Result.Component
+        The component of the result.
+
+    absolute : bool, optional
+        Flag indicating whether to use absolute values for enveloping (default is False).
+
+    Notes
+    -----
+    Only works in NX1980 or higher due to the use of NXOpen.CAE.ResultsManipulationEnvelopeBuilder in envelope_results()
+    Tested in SC2212. Stil issue with companion result not automatically adding (but it gets created an can be added manually after a file close/reopen)
+
+    """
+    if type(base_part) is not NXOpen.CAE.SimPart:
+        the_lw.WriteFullline("EnvelopeResults needs to be started from a .sim file!")
+        return
+    
+    sim_solution: NXOpen.CAE.SimSolution = get_solution(solution_name)
+    if sim_solution is None:
+        the_lw.WriteFullline("No solution found with name " + solution_name)
+        return
+
+    envelope_inputs: List[PostInput] = [PostInput] * sim_solution.StepCount
+    for i in range(len(envelope_inputs)):
+        envelope_inputs[i] = PostInput(solution_name, i + 1, 1, result_type); # Note that the user starts counting at 1!
+
+    envelope_results(envelope_inputs, companion_result_name, unv_file_name, envelope_operation, result_shell_section, result_component, False, solution_name)
+
+    the_lw.WriteFullline('Warning: Due to an unidentified bug, the companion result is not shown or available. Please save, close and reopening the file. For the companion result to be available')
+
+
+def get_nodal_value(solution_name: str, subcase: int, iteration: int, result_type: str, node_label: int) -> List[float]:
+    """
+    Retrieve nodal values for a specific node in a given solution.
+
+    Parameters
+    ----------
+    solution_name : str
+        The name of the solution containing the results.
+
+    subcase : int
+        The subcase number within the solution.
+
+    iteration : int
+        The iteration number within the subcase.
+
+    result_type : str
+        The type of result to retrieve (e.g. 'Displacement - Nodal', 'Reaction Force - Nodal', 'Reaction Moment - Nodal').
+
+    node_label : int
+        The label of the node for which nodal values are to be retrieved.
+
+    Returns
+    -------
+    List[float]
+        A list with the nodal values.
+
+        
+    Raises
+    ------
+    IndexError
+        If the solution_results list is empty.
+    IndexError
+        If the result_types list is empty.
+    IndexError
+        If the result_parameters list is empty.
+    IndexError
+        If nodal_data list does not contain expected nodal values.
+
+    Notes
+    -----
+    Tested in SC2212
+
+    """
+    post_input: PostInput = PostInput(solution_name, subcase, iteration, result_type)
+    # check input and catch errors so that the user doesn't get a error pop-up in SC
+    try:
+        check_post_input([post_input])
+    
+    except ValueError as e:
+        # internal raised exceptions are raised as valueError
+        the_lw.WriteFullline("Did not execute ExportResult due to input error. Please check the previous messages.")
+        # we still return the tehcnical message as an additional log
+        the_lw.WriteFullline(str(e))
+        return
+    except Exception as e:
+        the_lw.WriteFullline("Did not execute ExportResult due to general error. Please check the previous messages.")
+        # we still return the tehcnical message as an additional log
+        the_lw.WriteFullline(str(e))
+        return
+    solution_results: List[NXOpen.CAE.SolutionResult] = load_results([post_input])
+    result: NXOpen.CAE.Result = cast(NXOpen.CAE.Result, solution_results[0])
+    result_types: List[NXOpen.CAE.ResultType] = get_result_types([post_input], solution_results)
+    result_parameters: List[NXOpen.CAE.ResultParameters] = get_result_paramaters(result_types, NXOpen.CAE.Result.ShellSection.Maximum, NXOpen.CAE.Result.Component.Magnitude, False)
+    result_access: NXOpen.CAE.ResultAccess = the_session.ResultManager.CreateResultAccess(result, result_parameters[0])
+    nodal_data: List[float] = result_access.AskNodalResultAllComponents(solution_results[0].AskNodeIndex(node_label))
+
+    # the_lw.WriteFullline("Fx:\t" + str(nodal_data[0]) + "\tFy:\t" + str(nodal_data[1]) + "\tFz:\t" + str(nodal_data[2]) + "\tMagnitude:\t" + str(nodal_data[3]))
+
+    return nodal_data
+
+
+def get_nodal_values(solution_name: str, subcase: int, iteration: int, result_type: str, node_labels: List[int]) -> Dict[int, List[float]]:
+    """
+    Retrieve nodal values for a list of nodes in a given solution.
+    Use this iso looping get_nodal_value for performance.
+
+    Parameters
+    ----------
+    solution_name : str
+        The name of the solution containing the results.
+
+    subcase : int
+        The subcase number within the solution.
+
+    iteration : int
+        The iteration number within the subcase.
+
+    result_type : str
+        The type of result to retrieve (e.g. 'Displacement - Nodal', 'Reaction Force - Nodal', 'Reaction Moment - Nodal').
+
+    node_labels : List[int]
+        The labels of the nodes for which nodal values are to be retrieved.
+
+    Returns
+    -------
+    Dict[int, List[float]]
+        An ordered dictionary mapping node labels to a List[float] with nodal data.   
+
+    Notes
+    -----
+    Tested in SC2212
+
+    """
+    post_input: PostInput = PostInput(solution_name, subcase, iteration, result_type)
+    solution_results: List[NXOpen.CAE.SolutionResult] = load_results([post_input])
+    result: NXOpen.CAE.Result = cast(NXOpen.CAE.Result, solution_results[0])
+    result_types: List[NXOpen.CAE.ResultType] = get_result_types([post_input], solution_results)
+    result_parameters: List[NXOpen.CAE.ResultParameters] = get_result_paramaters(result_types, NXOpen.CAE.Result.ShellSection.Maximum, NXOpen.CAE.Result.Component.Magnitude, False)
+    result_access: NXOpen.CAE.ResultAccess = the_session.ResultManager.CreateResultAccess(result, result_parameters[0])
+    nodal_data: Dict[int, List[float]] = {}
+    for node_label in node_labels:
+        nodal_data[node_label] = result_access.AskNodalResultAllComponents(solution_results[0].AskNodeIndex(node_label))
+
+    return dict(sorted(nodal_data.items()))
+
+
+def add_companion_result(solution_name: str, companion_result_file_name: str, reference_type: str = "Structural"):
+    """
+    Add a companion result to a given solution, by file name
+
+    Parameters
+    ----------
+    solution_name : str
+        The name of the solution containing the results.
+
+    companion_result_file_name : str
+        Full path of the file containing the companion result
+
+    reference_type : optional, str
+        The result reference to add the companion result to. Default is 'structural'
+
+    Notes
+    -----
+    Tested in SC2212
+
+    """
+    sim_result_reference: NXOpen.CAE.SimResultReference = get_sim_result_reference(solution_name, reference_type)
+
+    multiple_companion_results_builder: NXOpen.CAE.MultipleCompanionResultBuilder = sim_result_reference.CompanionResults.CreateMultipleCompanionResultBuilder()
+    file_names: List[str] = []
+    file_names.append(companion_result_file_name)
+    multiple_companion_results_builder.SetCompanionResultFiles(file_names)
+    multiple_companion_results_builder.CommitResult()
+    multiple_companion_results_builder.Destroy()
+
+
+def write_submodel_data_to_file(solution_name: str, group_name: str) -> None:
+    """
+    Write nodal displacement .csv file for each subcase in the solution, for the nodes in a given group.
+    This file omits 'NODE LABEL' and 'MAGNITUDE" such that it can be directly used as a field to apply displacements in a submodel.
+
+    Parameters
+    ----------
+    solution_name : str
+        The name of the solution containing the results.
+
+    solution_name : str
+        The group containing the nodes for which to write the data to file
+
+    Notes
+    -----
+    Tested in SC2212
+
+    """
+    nodes_in_group: Dict[int, NXOpen.CAE.FENode] = get_nodes_in_group(group_name)
+    solution = get_solution(solution_name)
+    for i in range(solution.StepCount):
+        the_uf_session.Ui.SetStatus("Writing data for " + solution.GetStepByIndex(i).Name)
+        nodal_displacements: Dict[int, List[float]] = get_nodal_values(solution_name, i + 1, 1, 'Displacement - Nodal', nodes_in_group.keys())
+        nodal_displacements = dict(sorted(nodal_displacements.items()))
+        file_name: str = create_full_path(solution_name + solution.GetStepByIndex(i).Name, '.csv')
+        the_uf_session.Ui.SetStatus(f'Writing to file {file_name}')
+        the_lw.WriteFullline(f'Writing to file {file_name}')
+        with open(file_name, 'w') as file:
+            file.write('     X Coord       Y Coord       Z Coord             X             Y             Z\n')
+            for i in nodal_displacements.keys():
+                file.write(f'{nodes_in_group[i].Coordinates.X:12.4e}, {nodes_in_group[i].Coordinates.Y:12.4e}, {nodes_in_group[i].Coordinates.Z:12.4e}, {nodal_displacements[i][0]:12.4e}, {nodal_displacements[i][1]:12.4e}, {nodal_displacements[i][2]:12.4e}\n')
+
+
+def get_results_manipulation_envelope_builder_operation_names() -> Dict[int, str]:
+    """
+    Get the names of the available operations in order to give meaningful feedback
+
+    Returns
+    -------
+    Dict[int, str]
+       A dictionary with the int value and the string value of the operation 
+
+    Notes
+    -----
+    Warning: this assumes that the enum is ordered according the values by the NXOpen developers!!
+    Tested in SC2212
+
+    """
+    values = list(NXOpen.CAE.ResultsManipulationEnvelopeBuilder.Operation.__dict__)
+    mapping = {}
+    for i in range(0, len(values)):
+        # the_lw.WriteFullline(values[i] + ': ' + str(NXOpen.CAE.ResultsManipulationEnvelopeBuilder.Operation.ValueOf(i)))
+        mapping[i] = values[i]
+    
+    # for key, value in mapping.items():
+    #     the_lw.WriteFullline(str(key) + ': ' + value)
+    return mapping
+
+
+def get_result_component_names() -> Dict[int, str]:
+    """
+    Get the names of the available result components in order to give meaningful feedback
+
+    Returns
+    -------
+    Dict[int, str]
+       A dictionary with the int value and the string value of the result component 
+
+    Notes
+    -----
+    Warning: this assumes that the enum is ordered according the values by the NXOpen developers!!
+    Tested in SC2212
+
+    """
+    values = list(NXOpen.CAE.Result.Component.__dict__)
+    mapping = {}
+    for i in range(0, len(values)):
+        # the_lw.WriteFullline(values[i] + ': ' + str(NXOpen.CAE.ResultsManipulationEnvelopeBuilder.Operation.ValueOf(i)))
+        mapping[i] = values[i]
+    
+    # for key, value in mapping.items():
+    #     the_lw.WriteFullline(str(key) + ': ' + value)
+    return mapping
+
+
+def get_result_shell_section_names() -> Dict[int, str]:
+    """
+    Get the names of the available result shell section names in order to give meaningful feedback
+
+    Returns
+    -------
+    Dict[int, str]
+       A dictionary with the int value and the string value of the result shell section 
+
+    Notes
+    -----
+    Warning: this assumes that the enum is ordered according the values by the NXOpen developers!!
+    Tested in SC2212
+
+    """
+    values = list(NXOpen.CAE.Result.ShellSection.__dict__)
+    mapping = {}
+    for i in range(0, len(values)):
+        # the_lw.WriteFullline(values[i] + ': ' + str(NXOpen.CAE.ResultsManipulationEnvelopeBuilder.Operation.ValueOf(i)))
+        mapping[i] = values[i]
+    
+    # for key, value in mapping.items():
+    #     the_lw.WriteFullline(str(key) + ': ' + value)
+    return mapping
