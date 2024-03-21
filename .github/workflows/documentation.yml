@@ -24,33 +24,43 @@ jobs:
       - name: Sphinx build
         run: |
           sphinx-build -M html docs/source/ docs/build/
+      - name: Archive documentation
+        uses: actions/upload-artifact@v3
+        with:
+          name: docs
+          path: docs/build  # Replace with the path to your Sphinx documentation build output directory
 
 
-  docker-build:
-    needs: docs
-    name: Build Docker image
-    runs-on: ubuntu-latest
+  # docker-build:
+  #   needs: docs
+  #   name: Build Docker image
+  #   runs-on: ubuntu-latest
     
-    steps:
-      - uses: actions/checkout@v3
-      - name: list files
-        run: ls -l
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v3
+  #     - name: Download documentation
+  #       uses: actions/download-artifact@v3
+  #       with:
+  #         name: docs
+  #         path: docs/build  # Specify the directory to download the documentation to
+  #     - name: list files
+  #       run: ls -l docs/build
       - name: Build the Docker image
         run: docker build . --file ./docs/DocsDockerfile --tag ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
-      # END - Build the Docker image
 
 
-  docker-release:
-    needs: docker-build
-    name: Tagged Docker release to Google Artifact Registry
-    runs-on: ubuntu-latest
-    # if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')  # <-- Notice that I'm filtering here to only run when a tagged commit is pushed
+  # docker-release:
+  #   needs: docs
+  #   name: Tagged Docker release to Google Artifact Registry
+  #   runs-on: ubuntu-latest
+  #   # if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')  # <-- Notice that I'm filtering here to only run when a tagged commit is pushed
 
-    permissions:
-      contents: 'read'
-      id-token: 'write'
+  #   permissions:
+  #     contents: 'read'
+  #     id-token: 'write'
 
-    steps:
+  #   steps:
       - id: checkout
         name: Checkout
         uses: actions/checkout@v2
