@@ -38,7 +38,7 @@ jobs:
         with:
           project_id: ${{env.PROJECT_ID}}
           workload_identity_provider: 'projects/797139687884/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
-          service_account: 'artifactregistry@nxopendocumentationdocker.iam.gserviceaccount.com'
+          #service_account: 'artifactregistry@nxopendocumentationdocker.iam.gserviceaccount.com'
           token_format: 'access_token'
 
 
