@@ -67,35 +67,51 @@ jobs:
       #   name: Checkout
       #   uses: actions/checkout@v2
 
-      - id: auth
-        name: Authenticate with Google Cloud
-        uses: google-github-actions/auth@v2
+      # - id: auth
+      #   name: Authenticate with Google Cloud
+      #   uses: google-github-actions/auth@v2
+      #   with:
+      #     token_format: access_token
+      #     workload_identity_provider: projects/797139687884/locations/global/workloadIdentityPools/my-pool/providers/my-provider
+      #     service_account: artifactregistry@nxopendocumentationdocker.iam.gserviceaccount.com
+      #     access_token_lifetime: 300s
+
+      # - name: Login to Artifact Registry
+      #   uses: docker/login-action@v1
+      #   with:
+      #     registry: europe-west4-docker.pkg.dev
+      #     username: oauth2accesstoken
+      #     password: ${{ steps.auth.outputs.access_token }}
+
+      # # - name: Get tag
+      # #   id: get-tag
+      # #   run: echo ::set-output name=short_ref::${GITHUB_REF#refs/*/}
+
+      # - id: docker-push-tagged
+      #   name: Tag Docker image and push to Google Artifact Registry
+      #   uses: docker/build-push-action@v2
+      #   with:
+      #     push: true
+      #     tags: |
+      #       # ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:${{ steps.get-tag.outputs.short_ref }}
+      #       ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
+
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v0.6.0'
         with:
-          token_format: access_token
-          workload_identity_provider: projects/797139687884/locations/global/workloadIdentityPools/my-pool/providers/my-provider
-          service_account: artifactregistry@nxopendocumentationdocker.iam.gserviceaccount.com
-          access_token_lifetime: 300s
+          credentials_json: '${{ secrets.GOOGLE_ARTIFACTREGISTY_CREDENTIALS }}'
+          token_format: 'access_token'
 
-      - name: Login to Artifact Registry
-        uses: docker/login-action@v1
+      - uses: 'docker/login-action@v1'
+        name: 'Docker login'
         with:
-          registry: europe-west4-docker.pkg.dev
-          username: oauth2accesstoken
-          password: ${{ steps.auth.outputs.access_token }}
-
-      # - name: Get tag
-      #   id: get-tag
-      #   run: echo ::set-output name=short_ref::${GITHUB_REF#refs/*/}
-
-      - id: docker-push-tagged
-        name: Tag Docker image and push to Google Artifact Registry
-        uses: docker/build-push-action@v2
-        with:
-          push: true
-          tags: |
-            # ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:${{ steps.get-tag.outputs.short_ref }}
-            ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
-
+          registry: '${{ env.REGION }}-docker.pkg.dev'
+          username: 'oauth2accesstoken'
+          password: '${{ steps.auth.outputs.access_token }}'
+      - name: 'Docker push'
+        run: |-
+          docker push ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
 
   # deploy:
   #   needs: docker-release
