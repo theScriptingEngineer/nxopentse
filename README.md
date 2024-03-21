@@ -48,6 +48,13 @@ So there is no need to manually build an upload to either test.pypi or pypi
 ``` git tag -a v0.0.1a1 -m "pre-release - can be used. Partially tested. Will still contain lots of bugs" ```
 > **NOTE:** Tags don't get pushed automatically. Use ```git push origin --tags```
 
+workflow:
+  - increase the version number so that it doesn't clash with test.pypi or pypi
+  - local commit
+  - tag the commit, with the same version number as above
+  - push from the commandline using ```git push origin --tags```
+
+
 ### build the package manually (for reference only)
 install locally by navigating to folder and then
 ```pip install .```
