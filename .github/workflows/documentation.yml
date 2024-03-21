@@ -34,12 +34,13 @@ jobs:
       # - name: Build the Docker image
       #   run: docker build . --file ./docs/DocsDockerfile --tag ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
 
-      - uses: 'google-github-actions/auth@v2'
+      # from: https://github.com/google-github-actions/auth#setting-up-workload-identity-federation
+      # I took the authentication via "Service Account Key JSON" because it is very similar to the CLI on a local machine
+      # I had to add the service account as a principle to itself with the "Service Account Token Creator" role, otherwise the service account was not permitted
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
         with:
-          # project_id: ${{env.PROJECT_ID}}
-          # workload_identity_provider: 'projects/797139687884/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
-          # service_account: 'artifactregistry@nxopendocumentationdocker.iam.gserviceaccount.com'
-          # token_format: 'access_token'  
           credentials_json: ${{ secrets.GOOGLE_ARTIFACTREGISTY_CREDENTIALS }}
           token_format: 'access_token'
 
