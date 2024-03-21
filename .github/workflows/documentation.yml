@@ -31,7 +31,7 @@ jobs:
 
       # from https://github.com/google-github-actions/deploy-cloudrun#credentials
       - id: 'auth'
-        uses: 'google-github-actions/auth@v0'
+        uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: '${{ secrets.GOOGLE_ARTIFACTREGISTY_CREDENTIALS }}'
           token_format: 'access_token'
