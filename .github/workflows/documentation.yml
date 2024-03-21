@@ -36,11 +36,12 @@ jobs:
 
       - uses: 'google-github-actions/auth@v2'
         with:
-          project_id: ${{env.PROJECT_ID}}
-          workload_identity_provider: 'projects/797139687884/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
-          service_account: 'artifactregistry@nxopendocumentationdocker.iam.gserviceaccount.com'
+          # project_id: ${{env.PROJECT_ID}}
+          # workload_identity_provider: 'projects/797139687884/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
+          # service_account: 'artifactregistry@nxopendocumentationdocker.iam.gserviceaccount.com'
+          # token_format: 'access_token'  
+          credentials_json: ${{ secrets.GOOGLE_ARTIFACTREGISTY_CREDENTIALS }}
           token_format: 'access_token'
-
 
       # This example runs "docker login" directly to Container Registry.
       - name: Docker login
