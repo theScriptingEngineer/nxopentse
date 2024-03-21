@@ -24,15 +24,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v3
-      # - name: Install dependencies
-      #   run: |
-      #     pip install sphinx sphinx_rtd_theme myst_parser
-      # - name: Sphinx build
-      #   run: |
-      #     sphinx-build -M html docs/source/ docs/build/
+      - name: Install dependencies
+        run: |
+          pip install sphinx sphinx_rtd_theme myst_parser
+      - name: Sphinx build
+        run: |
+          sphinx-build -M html docs/source/ docs/build/
 
-      # - name: Build the Docker image
-      #   run: docker build . --file ./docs/DocsDockerfile --tag ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
+      - name: Build the Docker image
+        run: docker build . --file ./docs/DocsDockerfile --tag ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
 
       # from: https://github.com/google-github-actions/auth#setting-up-workload-identity-federation
       # I took the authentication via "Service Account Key JSON" because it is very similar to the CLI on a local machine
