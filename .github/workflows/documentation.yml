@@ -44,10 +44,10 @@ jobs:
   #       with:
   #         name: docs
   #         path: docs/build  # Specify the directory to download the documentation to
-      - name: list files
-        run: ls -l docs
-      - name: list files
-        run: ls -l
+      # - name: list files
+      #   run: ls -l docs
+      # - name: list files
+      #   run: ls -l
       - name: Build the Docker image
         run: docker build . --file ./docs/DocsDockerfile --tag ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
 
@@ -63,13 +63,13 @@ jobs:
   #     id-token: 'write'
 
   #   steps:
-      - id: checkout
-        name: Checkout
-        uses: actions/checkout@v2
+      # - id: checkout
+      #   name: Checkout
+      #   uses: actions/checkout@v2
 
       - id: auth
         name: Authenticate with Google Cloud
-        uses: google-github-actions/auth@v0
+        uses: google-github-actions/auth@v2
         with:
           token_format: access_token
           workload_identity_provider: projects/797139687884/locations/global/workloadIdentityPools/my-pool/providers/my-provider
