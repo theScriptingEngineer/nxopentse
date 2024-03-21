@@ -41,6 +41,10 @@ General tools which can be used in different NX applications.
 
 
 ## dev
+There is a build pipeline in Github which automatically publishes to test.pypi and pypi (the latter only on tagged commits)
+So there is no need to manually build an upload to either test.pypi or pypi
+The below is just for reference
+
 install locally by navigating to folder and then
 ```pip install .```
 
@@ -49,7 +53,7 @@ uninstall:
 
 update: uninstall and reinstall
 
-### build the package
+### build the package manually
 required installations:
 ```
 python -m pip install --upgrade twine
@@ -69,3 +73,5 @@ manually publish to pypi:
 ```
 py -m twine upload dist/*
 ```
+
+tag 
