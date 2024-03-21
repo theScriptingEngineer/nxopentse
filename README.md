@@ -74,6 +74,7 @@ py -m twine upload --repository testpypi dist/*
 ```
 
 manually publish to pypi:
+This has to be done manual on the first time, as 'non user identities cannot create new projects'
 ```
 py -m twine upload dist/*
 ```
