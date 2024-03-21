@@ -3,3 +3,7 @@ FROM nginx:stable-alpine
 
 # start with theScriptingEngineer, which also contains the articles and then add the NX ones
 COPY /docs/build/html /usr/share/nginx/html/
+
+# no need to expose anything.
+# is already done in the base image
+# when uploading to google this works

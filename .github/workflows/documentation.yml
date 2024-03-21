@@ -2,6 +2,13 @@ name: documentation
 
 on: push
 
+env:
+  PROJECT_ID: nxopendocumentationdocker
+  REGION: europe-west4
+  REPO_NAME: nxopentsedocumentation
+  DOCKER_IMAGE_NAME: sphinx-docs-nginxdocker
+  SERVICE: nxopentse-documentation
+
 permissions:
   contents: write
 
@@ -17,11 +24,81 @@ jobs:
       - name: Sphinx build
         run: |
           sphinx-build doc _build
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+
+  docker-build:
+    needs: docs
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build the Docker image
+        run: docker build . --file ./docs/DocsDockerfile --tag ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
+      # END - Build the Docker image
+
+
+  docker-release:
+    needs: docker-build
+    name: Tagged Docker release to Google Artifact Registry
+    runs-on: ubuntu-latest
+    # if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')  # <-- Notice that I'm filtering here to only run when a tagged commit is pushed
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@v2
+
+      - id: auth
+        name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v0
         with:
-          publish_branch: gh-pages
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: _build/
-          force_orphan: true
+          token_format: access_token
+          workload_identity_provider: projects/797139687884/locations/global/workloadIdentityPools/my-pool/providers/my-provider
+          service_account: artifactregistry@nxopendocumentationdocker.iam.gserviceaccount.com
+          access_token_lifetime: 300s
+
+      - name: Login to Artifact Registry
+        uses: docker/login-action@v1
+        with:
+          registry: europe-west4-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      # - name: Get tag
+      #   id: get-tag
+      #   run: echo ::set-output name=short_ref::${GITHUB_REF#refs/*/}
+
+      - id: docker-push-tagged
+        name: Tag Docker image and push to Google Artifact Registry
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: |
+            # ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:${{ steps.get-tag.outputs.short_ref }}
+            ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
+
+
+  # deploy:
+  #   needs: docker-release
+  #   name: deploy
+  #   runs-on: ubuntu-latest
+
+  #   steps:
+  #   - uses: actions/checkout@v3
+    
+  #   # from https://github.com/google-github-actions/deploy-cloudrun#credentials
+  #   - id: 'authCloudRun'
+  #     uses: 'google-github-actions/auth@v0'
+  #     with:
+  #       credentials_json: '${{ secrets.GOOGLE_CLOUDRUN_CREDENTIALS }}'
+
+  #   # docs: https://github.com/marketplace/actions/deploy-to-cloud-run
+  #   - name: 'Deploy to Cloud Run'
+  #     uses: 'google-github-actions/deploy-cloudrun@v0'
+  #     with:
+  #       image: ${{env.REGION}}-docker.pkg.dev/${{env.PROJECT_ID}}/${{env.REPO_NAME}}/${{env.DOCKER_IMAGE_NAME}}:latest
+  #       service: ${{env.SERVICE}}
+  #       region: ${{env.REGION}}

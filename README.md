@@ -44,6 +44,7 @@ General tools which can be used in different NX applications.
 
 # Documentation
 Documentation from source using Sphinx
+```sphinx-build -M html docs/source/ docs/build/```
 
 # Development
 There is a build pipeline in Github which automatically publishes to test.pypi and pypi (the latter only on tagged commits)
