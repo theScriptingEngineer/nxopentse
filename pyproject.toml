@@ -2,7 +2,7 @@
 
 [project]
 name = "nxopentse"
-version = "0.0.1a7"
+version = "0.0.1a8"
 authors = [
   { name="theScriptingEngineer", email="nxopen@theScriptingEngineer.com" },
 ]
@@ -19,7 +19,7 @@ classifiers = [
 ]
 
 [project.urls]
-Documentation = "https://nxopentse.theScriptingEngineer.com"
+Documentation = "https://nxopentsedocumentation.theScriptingEngineer.com"
 Repository = "https://github.com/theScriptingEngineer/nxopentse"
 Issues = "https://github.com/theScriptingEngineer/nxopentse/issues"
 

@@ -1,9 +1,22 @@
 # nxopentse (by theScriptingEngineer)
+> **LEARN NXOPEN**
+>
+>[Siemens NX beginner NXOpen course (Python)](https://www.udemy.com/course/siemens-nx-beginner-nxopen-course-python/?referralCode=DEE8FAB445765802FEDC)
+>
+>[SimCenter 3D basic NXOpen course (C#)](https://www.udemy.com/course/simcenter3d-basic-nxopen-course/?referralCode=4ABC27CFD7D2C57D220B%20)
+
 This package contains functions which you can use in your own scripts, so you don't have to write everything from scratch.
-``` pip install nxopentse```
+```
+pip install nxopentse
+```
+
+> **NOTE:** You need to have configured NX/Simcenter to work with the external python interpreter.
+> 
 
 Then in your script add 
-``` import nxopentse``` 
+``` 
+import nxopentse
+``` 
 
 Simple example:
 ```
@@ -11,12 +24,12 @@ import NXOpen
 import nxopentse as tse
 
 
-# next line not required for nxopen, but every NXOpen journal needs an NXOpen.Session object
+# Every NXOpen journal needs an NXOpen.Session object
 the_session: NXOpen.Session = NXOpen.Session.GetSession()
 
 
 def main():
-    tse.tools.hello()
+    tse.cad.nx_hello()
 
 
 if __name__ == '__main__':
@@ -24,7 +37,7 @@ if __name__ == '__main__':
 
 ```
 
-> **NOTE:** You need to have configured NX/Simcenter to work with the external python interpreter.
+
 
 ## nxopen.cad
 CAD functionality
@@ -43,57 +56,7 @@ General tools which can be used in different NX applications.
 
 
 # Documentation
+[nxopentse documentation](https://nxopentsedocumentation.thescriptingengineer.com/)
+
 Documentation from source using Sphinx
 ```sphinx-build -M html docs/source/ docs/build/```
-
-# Development
-There is a build pipeline in Github which automatically publishes to test.pypi and pypi (the latter only on tagged commits)
-So there is no need to manually build an upload to either test.pypi or pypi
-
-## Tagging
-``` git tag -a v0.0.1a1 -m "pre-release - can be used. Partially tested. Will still contain lots of bugs" ```
-> **NOTE:** Tags don't get pushed automatically. Use ```git push origin --tags```
-> 
-> 
-> or configure "git.followTagsWhenSync": true
-> preferences -> extensions -> git -> check Follow tags when sync
-
-workflow (VSCode):
-  - increase the version number so that it doesn't clash with test.pypi or pypi
-  - local commit
-  - tag the commit, with the same version number as above
-  - push/sync wioth github
-
-
-## Build the package manually (for reference only)
-install locally by navigating to folder and then
-```pip install .```
-
-uninstall:
-```pip uninstall nxopentse```
-
-update: uninstall and reinstall
-
-required installations:
-```
-python -m pip install --upgrade twine
-pip install build
-```
-
-Building the package:
-```
-python -m build
-```
-
-manually publish to test.pypi:
-```
-py -m twine upload --repository testpypi dist/*
-```
-
-manually publish to pypi:
-This has to be done manual on the first time, as 'non user identities cannot create new projects'
-```
-py -m twine upload dist/*
-```
-
-tag 
