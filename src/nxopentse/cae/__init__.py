@@ -17,6 +17,7 @@ from .postprocessing import PostInput, \
                             envelope_solution, \
                             get_nodal_value, \
                             get_nodal_values, \
+                            get_element_nodal_value, \
                             add_companion_result, \
                             write_submodel_data_to_file
 

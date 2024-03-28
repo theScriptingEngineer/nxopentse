@@ -100,6 +100,7 @@ def load_results(post_inputs: List[PostInput], reference_type: str = "Structural
             # SolutionResult[filename_solutionname]
             solution_results[i] = cast(NXOpen.CAE.SolutionResult, the_session.ResultManager.FindObject("SolutionResult[" + sys.Path.GetFileName(simPart.FullPath) + "_" + sim_solution.Name + "]"))
         except:
+            the_uf_session.Ui.DisplayMessage("Loading results for " + post_inputs[i]._solution + " SubCase " + str(post_inputs[i]._subcase) + " Iteration " + str(post_inputs[i]._iteration) + " ResultType " + post_inputs[i]._resultType)
             solution_results[i] = the_session.ResultManager.CreateReferenceResult(sim_result_reference)
 
     return solution_results
@@ -873,6 +874,162 @@ def get_nodal_values(solution_name: str, subcase: int, iteration: int, result_ty
         nodal_data[node_label] = result_access.AskNodalResultAllComponents(solution_results[0].AskNodeIndex(node_label))
 
     return dict(sorted(nodal_data.items()))
+
+
+def get_element_nodal_value(solution_name: str, subcase: int, iteration: int, result_type: str, element_label: int, result_parameters: NXOpen.CAE.ResultParameters = None) -> tuple:
+    """
+    Retrieve element-nodal values for a specific element in a given solution.
+    Note that the element-nodal values are hard coded to be stress and the maximum of the section for shell elements
+
+    Parameters
+    ----------
+    solution_name : str
+        The name of the solution containing the results.
+
+    subcase : int
+        The subcase number within the solution.
+
+    iteration : int
+        The iteration number within the subcase.
+
+    result_type : str
+        The type of result to retrieve (e.g. 'Displacement - Nodal', 'Reaction Force - Nodal', 'Reaction Moment - Nodal').
+
+    element_label : int
+        The label of the element for which element-nodal values are to be retrieved.
+
+    result_parameters : NXOpen.CAE.ResultParameters, optional
+        The result parameters to use for the elemental values. Default is ShellSection.Maximum and stress components.
+
+    Returns
+    -------
+    tuple
+        A tuple with 3 objects: 
+        a list with the node numbers
+        an int which is the number of results per node (numComponents)
+        and a list which containst the element-nodal values: node_index*numComponents + component_index
+
+        
+    Raises
+    ------
+    IndexError
+        If the solution_results list is empty.
+    IndexError
+        If the result_types list is empty.
+    IndexError
+        If the result_parameters list is empty.
+    IndexError
+        If element_nodal_data list does not contain expected element-nodal values:
+            XX YY ZZ XY YZ ZX Determinant Mean MaxShear MinPrincipal MidPrincipal MaxPrincipal WorstPrincipal Octahedral Von-Mises
+
+    Notes
+    -----
+    Tested in SC2212
+
+    """
+    post_input: PostInput = PostInput(solution_name, subcase, iteration, result_type)
+    # check input and catch errors so that the user doesn't get a error pop-up in SC
+    try:
+        check_post_input([post_input])
+    
+    except ValueError as e:
+        # internal raised exceptions are raised as valueError
+        the_lw.WriteFullline("Did not execute ExportResult due to input error. Please check the previous messages.")
+        # we still return the tehcnical message as an additional log
+        the_lw.WriteFullline(str(e))
+        return
+    except Exception as e:
+        the_lw.WriteFullline("Did not execute ExportResult due to general error. Please check the previous messages.")
+        # we still return the tehcnical message as an additional log
+        the_lw.WriteFullline(str(e))
+        return
+    solution_results: List[NXOpen.CAE.SolutionResult] = load_results([post_input])
+    result: NXOpen.CAE.Result = cast(NXOpen.CAE.Result, solution_results[0])
+    result_types: List[NXOpen.CAE.ResultType] = get_result_types([post_input], solution_results)
+    if result_parameters is None:
+        result_parameters: List[NXOpen.CAE.ResultParameters] = get_result_paramaters(result_types, NXOpen.CAE.Result.ShellSection.Maximum, NXOpen.CAE.Result.Component.Xx, False)
+    result_access: NXOpen.CAE.ResultAccess = the_session.ResultManager.CreateResultAccess(result, result_parameters[0])
+    element_nodal_data: tuple = result_access.AskElementNodalResultAllComponents(solution_results[0].AskElementIndex(element_label)) #.AskNodalResultAllComponents(solution_results[0].AskNodeIndex(element_label))
+    
+
+    # the_lw.WriteFullline("Fx:\t" + str(nodal_data[0]) + "\tFy:\t" + str(nodal_data[1]) + "\tFz:\t" + str(nodal_data[2]) + "\tMagnitude:\t" + str(nodal_data[3]))
+
+    return element_nodal_data
+
+
+def get_elemental_value(solution_name: str, subcase: int, iteration: int, result_type: str, element_label: int, result_parameters: NXOpen.CAE.ResultParameters = None) -> tuple:
+    """
+    Retrieve elemental values for a specific element in a given solution.
+    Note that the elemental values are hard coded to be stress and the maximum of the section for shell elements
+
+    Parameters
+    ----------
+    solution_name : str
+        The name of the solution containing the results.
+
+    subcase : int
+        The subcase number within the solution.
+
+    iteration : int
+        The iteration number within the subcase.
+
+    result_type : str
+        The type of result to retrieve (e.g. 'Displacement - Nodal', 'Reaction Force - Nodal', 'Reaction Moment - Nodal').
+
+    element_label : int
+        The label of the element for which elemental values are to be retrieved.
+    
+    result_parameters : NXOpen.CAE.ResultParameters, optional
+        The result parameters to use for the elemental values. Default is ShellSection.Maximum and stress components.
+
+    Returns
+    -------
+    List[float]
+        A list with the requested elemental values.
+
+        
+    Raises
+    ------
+    IndexError
+        If the solution_results list is empty.
+    IndexError
+        If the result_types list is empty.
+    IndexError
+        If the result_parameters list is empty.
+    IndexError
+        If elemental_data list does not contain expected element-nodal values:
+            XX YY ZZ XY YZ ZX Determinant Mean MaxShear MinPrincipal MidPrincipal MaxPrincipal WorstPrincipal Octahedral Von-Mises
+
+    Notes
+    -----
+    Tested in SC2212
+
+    """
+    post_input: PostInput = PostInput(solution_name, subcase, iteration, result_type)
+    # check input and catch errors so that the user doesn't get a error pop-up in SC
+    try:
+        check_post_input([post_input])
+    
+    except ValueError as e:
+        # internal raised exceptions are raised as valueError
+        the_lw.WriteFullline("Did not execute ExportResult due to input error. Please check the previous messages.")
+        # we still return the tehcnical message as an additional log
+        the_lw.WriteFullline(str(e))
+        return
+    except Exception as e:
+        the_lw.WriteFullline("Did not execute ExportResult due to general error. Please check the previous messages.")
+        # we still return the tehcnical message as an additional log
+        the_lw.WriteFullline(str(e))
+        return
+    solution_results: List[NXOpen.CAE.SolutionResult] = load_results([post_input])
+    result: NXOpen.CAE.Result = cast(NXOpen.CAE.Result, solution_results[0])
+    result_types: List[NXOpen.CAE.ResultType] = get_result_types([post_input], solution_results)
+    if result_parameters is None:
+        result_parameters: List[NXOpen.CAE.ResultParameters] = get_result_paramaters(result_types, NXOpen.CAE.Result.ShellSection.Maximum, NXOpen.CAE.Result.Component.Xx, False)
+    result_access: NXOpen.CAE.ResultAccess = the_session.ResultManager.CreateResultAccess(result, result_parameters[0])
+    elemental_data: List[float] = result_access.AskElementResultAllComponents(solution_results[0].AskElementIndex(element_label))
+
+    return elemental_data
 
 
 def add_companion_result(solution_name: str, companion_result_file_name: str, reference_type: str = "Structural"):
