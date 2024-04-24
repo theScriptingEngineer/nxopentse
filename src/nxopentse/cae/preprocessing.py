@@ -238,7 +238,7 @@ def create_nodal_constraint(node_label: int, dx: float, dy : float, dz: float, r
     property_table.SetScalarFieldPropertyValue("DOF5", field_expression5)
 
     indep_var_array6: List[NXOpen.Fields.FieldVariable] = []
-    field_expression6.EditFieldExpression(str(rx), unit_degrees, indep_var_array6, False)
+    field_expression6.EditFieldExpression(str(rz), unit_degrees, indep_var_array6, False)
     property_table.SetScalarFieldPropertyValue("DOF6", field_expression6)
 
     # select the node via the label to assign the constraint to

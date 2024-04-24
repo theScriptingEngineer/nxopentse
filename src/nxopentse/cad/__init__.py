@@ -1,6 +1,7 @@
 from .code import   nx_hello,\
                     create_point, \
                     get_all_bodies,\
+                    get_faces_of_type, \
                     get_all_points,\
                     get_all_features,\
                     get_feature_by_name,\

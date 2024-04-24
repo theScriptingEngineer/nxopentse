@@ -6,8 +6,6 @@ import NXOpen
 
 
 the_session: NXOpen.Session = NXOpen.Session.GetSession()
-base_part: NXOpen.BasePart = the_session.Parts.BaseWork
-work_part: NXOpen.Part = the_session.Parts.Work
 the_lw: NXOpen.ListingWindow = the_session.ListingWindow
 
 
@@ -19,7 +17,7 @@ def nx_hello():
     the_lw.WriteFullline("Hello from " + os.path.basename(__file__))
 
 
-def create_point(base_part: NXOpen.BasePart, x_co: float, y_co: float, z_co: float, color: int = 134) -> NXOpen.Point:
+def create_point(base_part: NXOpen.BasePart, x_co: float, y_co: float, z_co: float, color: int = 134, work_part: NXOpen.Part=None) -> NXOpen.Point:
     """
     Create a point at the specified coordinates.
 
@@ -35,12 +33,16 @@ def create_point(base_part: NXOpen.BasePart, x_co: float, y_co: float, z_co: flo
         The z-coordinate of the point.
     color : int, optional
         The color to give the point.
+    work_part : NXOpen.Part, optional
+        The part in which to create the point. Defaults to work part.
         
     Returns
     -------
     NXOpen.Point3d
         The created point.
     """
+    if work_part is None:
+        work_part = the_session.Parts.Work
     unit_mm: NXOpen.Unit = base_part.UnitCollection.FindObject("Millimeter")
     exp_x: NXOpen.Expression = base_part.Expressions.CreateSystemExpressionWithUnits(str(x_co), unit_mm)
     exp_y: NXOpen.Expression = base_part.Expressions.CreateSystemExpressionWithUnits(str(y_co), unit_mm)
@@ -59,52 +61,97 @@ def create_point(base_part: NXOpen.BasePart, x_co: float, y_co: float, z_co: flo
     return point
 
 
-def get_all_bodies() -> List[NXOpen.Body]:
+def get_all_bodies(work_part: NXOpen.Part=None) -> List[NXOpen.Body]:
     """
     Get all the bodies in the work part.
 
+    Parameters
+    ----------
+    work_part : NXOpen.Part, optional
+        The part for which to get all bodies. Defaults to work part.
+    
     Returns
     -------
     List[NXOpen.Body]
         A list of all the bodies in the work part.
     """
+    if work_part is None:
+        work_part = the_session.Parts.Work
     all_bodies: List[NXOpen.Body] = []
     for item in work_part.Bodies: # type: ignore
         all_bodies.append(item)
     return all_bodies
 
 
-def get_all_points() -> List[NXOpen.Point]:
+def get_faces_of_type(body: NXOpen.Body, face_type: NXOpen.Face.FaceType) -> List[NXOpen.Face]:
+    """
+    Get all the faces of a specific type from a given body.
+
+    Parameters
+    ----------
+    body : NXOpen.Body
+        The body from which to retrieve the faces.
+    face_type : NXOpen.Face.FaceType
+        The type of faces to retrieve.
+
+    Returns
+    -------
+    List[NXOpen.Face]
+        A list of faces of the specified type.
+    """
+    all_faces: List[NXOpen.Face] = body.GetFaces()
+    faces_of_type: List[NXOpen.Face] = []
+    for i in range(len(all_faces)):
+        if all_faces[i].SolidFaceType is face_type:
+            faces_of_type.append(all_faces[i])
+    return faces_of_type
+
+
+def get_all_points(work_part: NXOpen.Part=None) -> List[NXOpen.Point]:
     """
     Get all the points in the work part.
+
+    Parameters
+    ----------
+    work_part : NXOpen.Part, optional
+        The part for which to get all bodies. Defaults to work part.
 
     Returns
     -------
     List[NXOpen.Point]
         A list of all the points in the work part.
     """
+    if work_part is None:
+        work_part = the_session.Parts.Work
     all_points: List[NXOpen.Point] = []
     for item in work_part.Points: # type: ignore
         all_points.append(item)
     return all_points
 
 
-def get_all_features() -> List[NXOpen.Features.Feature]:
+def get_all_features(work_part: NXOpen.Part=None) -> List[NXOpen.Features.Feature]:
     """
     Get all the features in the work part.
+
+    Parameters
+    ----------
+    work_part : NXOpen.Part, optional
+        The part for which to get all features. Defaults to work part.
 
     Returns
     -------
     List[NXOpen.Features.Feature]
         A list of all the features in the work part.
     """
+    if work_part is None:
+        work_part = the_session.Parts.Work
     all_features: List[NXOpen.Features.Feature] = []
     for item in work_part.Features:
         all_features.append(item)
     return all_features
 
 
-def get_feature_by_name(name: str) -> Optional[List[NXOpen.Features.Feature]]:
+def get_feature_by_name(name: str, work_part: NXOpen.Part=None) -> Optional[List[NXOpen.Features.Feature]]:
     """
     Get features with the specified name.
 
@@ -112,13 +159,17 @@ def get_feature_by_name(name: str) -> Optional[List[NXOpen.Features.Feature]]:
     ----------
     name : str
         The name of the feature.
+    work_part : NXOpen.Part, optional
+        The part in which to search for the feature. Defaults to work part.
 
     Returns
     -------
     Optional[List[NXOpen.Features.Feature]]
         A list of features with the specified name, or None if no feature is found.
     """
-    all_features: List[NXOpen.Features.Feature] = get_all_features()
+    if work_part is None:
+        work_part = the_session.Parts.Work
+    all_features: List[NXOpen.Features.Feature] = get_all_features(work_part)
     features: List[NXOpen.Features.Feature] = []
     for feature in all_features:
         if feature.Name == name:
@@ -126,16 +177,23 @@ def get_feature_by_name(name: str) -> Optional[List[NXOpen.Features.Feature]]:
     return features
 
 
-def get_all_point_features() -> List[NXOpen.Features.PointFeature]:
+def get_all_point_features(work_part: NXOpen.Part=None) -> List[NXOpen.Features.PointFeature]:
     """
     Get all the point features in the work part.
+
+    Parameters
+    ----------
+    work_part : NXOpen.Part, optional
+        The part for which to get all features. Defaults to work part.
 
     Returns
     -------
     List[NXOpen.Features.PointFeature]
         A list of all the point features in the work part.
     """
-    all_features: List[NXOpen.Features.Feature] = get_all_features()
+    if work_part is None:
+        work_part = the_session.Parts.Work
+    all_features: List[NXOpen.Features.Feature] = get_all_features(work_part)
     all_point_features: list[NXOpen.Features.PointFeature] = []
     for feature in all_features:
         if isinstance(feature, NXOpen.Features.PointFeature):
@@ -144,7 +202,7 @@ def get_all_point_features() -> List[NXOpen.Features.PointFeature]:
     return all_point_features
 
 
-def get_point_with_feature_name(name: str) -> Optional[NXOpen.Point]:
+def get_point_with_feature_name(name: str, work_part: NXOpen.Part=None) -> Optional[NXOpen.Point]:
     """
     Get the point associated with the feature name.
 
@@ -153,6 +211,11 @@ def get_point_with_feature_name(name: str) -> Optional[NXOpen.Point]:
     name : str
         The name of the feature.
 
+    Parameters
+    ----------
+    work_part : NXOpen.Part, optional
+        The part in which to look the feature. Defaults to work part.
+        
     Returns
     -------
     Optional[NXOpen.Point]
@@ -162,6 +225,8 @@ def get_point_with_feature_name(name: str) -> Optional[NXOpen.Point]:
     -----
     Tested in Simcenter 2212
     """
+    if work_part is None:
+        work_part = the_session.Parts.Work
     all_point_features: list[NXOpen.Features.PointFeature] = get_all_point_features()
     for point_feature in all_point_features:
         if point_feature.Name == name:
@@ -169,7 +234,7 @@ def get_point_with_feature_name(name: str) -> Optional[NXOpen.Point]:
     return None
 
 
-def create_cylinder(point1: NXOpen.Point, point2: NXOpen.Point, diameter: float, length: float) -> NXOpen.Features.Cylinder:
+def create_cylinder(point1: NXOpen.Point, point2: NXOpen.Point, diameter: float, length: float, work_part: NXOpen.Part=None) -> NXOpen.Features.Cylinder:
     """
     Create a cylinder between two points.
 
@@ -183,6 +248,8 @@ def create_cylinder(point1: NXOpen.Point, point2: NXOpen.Point, diameter: float,
         The diameter of the cylinder.
     length : float
         The length of the cylinder.
+    work_part : NXOpen.Part, optional
+        The part in which to create the cylinder. Defaults to work part.
 
     Returns
     -------
@@ -193,6 +260,8 @@ def create_cylinder(point1: NXOpen.Point, point2: NXOpen.Point, diameter: float,
     -----
     Tested in Simcenter 2212
     """
+    if work_part is None:
+        work_part = the_session.Parts.Work
     cylinder_builder = work_part.Features.CreateCylinderBuilder(NXOpen.Features.Feature.Null)
     cylinder_builder.BooleanOption.Type = NXOpen.GeometricUtilities.BooleanOperation.BooleanType.Create
     targetBodies1 = [NXOpen.Body.Null] * 1 
@@ -214,7 +283,7 @@ def create_cylinder(point1: NXOpen.Point, point2: NXOpen.Point, diameter: float,
     return cylinder_feature
 
 
-def create_intersect_feature(body1: NXOpen.Body, body2: NXOpen.Body) -> NXOpen.Features.BooleanFeature:
+def create_intersect_feature(body1: NXOpen.Body, body2: NXOpen.Body, work_part: NXOpen.Part=None) -> NXOpen.Features.BooleanFeature:
     """
     Create an intersect feature between two bodies.
 
@@ -224,6 +293,8 @@ def create_intersect_feature(body1: NXOpen.Body, body2: NXOpen.Body) -> NXOpen.F
         The first body.
     body2 : NXOpen.Body
         The second body.
+    work_part : NXOpen.Part, optional
+        The part in which to perform the intersection. Defaults to work part.
 
     Returns
     -------
@@ -234,6 +305,8 @@ def create_intersect_feature(body1: NXOpen.Body, body2: NXOpen.Body) -> NXOpen.F
     -----
     Tested in Simcenter 2212
     """
+    if work_part is None:
+        work_part = the_session.Parts.Work
     boolean_builder = work_part.Features.CreateBooleanBuilderUsingCollector(NXOpen.Features.BooleanFeature.Null)
 
     # settings
@@ -358,7 +431,7 @@ def get_area_faces_with_color(bodies: List[NXOpen.Body], color: int) -> float:
     return area
 
 
-def create_line(point1: NXOpen.Point, point2: NXOpen.Point) -> NXOpen.Features.AssociativeLine:
+def create_line(point1: NXOpen.Point, point2: NXOpen.Point, work_part: NXOpen.Part=None) -> NXOpen.Features.AssociativeLine:
     """
     Create a line between two points.
 
@@ -368,6 +441,8 @@ def create_line(point1: NXOpen.Point, point2: NXOpen.Point) -> NXOpen.Features.A
         The first point.
     point2 : NXOpen.Point
         The second point.
+    work_part : NXOpen.Part, optional
+        The part for in which to create the line. Defaults to work part.
 
     Returns
     -------
@@ -380,7 +455,8 @@ def create_line(point1: NXOpen.Point, point2: NXOpen.Point) -> NXOpen.Features.A
     """
     # Implementation of create_line function is missing in the provided code.
     # Please provide the implementation or remove the function if not needed.
-    pass
+    if work_part is None:
+        work_part = the_session.Parts.Work
     associative_line_builder = work_part.BaseFeatures.CreateAssociativeLineBuilder(NXOpen.Features.AssociativeLine.Null)
     # cannot use point directly, but need to create a new point
     associative_line_builder.StartPoint.Value = work_part.Points.CreatePoint(point1, NXOpen.Xform.Null, NXOpen.SmartObject.UpdateOption.WithinModeling) # type: ignore
