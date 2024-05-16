@@ -7,10 +7,10 @@ from .code import   nx_hello,\
                     get_feature_by_name,\
                     get_all_point_features,\
                     get_point_with_feature_name, \
-                    create_cylinder, \
+                    create_cylinder_between_two_points, \
                     create_intersect_feature, \
                     get_faces_of_body, \
                     get_area_faces_with_color, \
                     get_area_faces_with_color, \
-                    create_line, \
+                    create_line_between_two_points, \
                     delete_feature

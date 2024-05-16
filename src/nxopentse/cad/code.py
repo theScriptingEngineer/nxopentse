@@ -74,6 +74,10 @@ def get_all_bodies(work_part: NXOpen.Part=None) -> List[NXOpen.Body]:
     -------
     List[NXOpen.Body]
         A list of all the bodies in the work part.
+
+    NOTES
+    -----
+    Tested in Simcenter 2212
     """
     if work_part is None:
         work_part = the_session.Parts.Work
@@ -234,7 +238,7 @@ def get_point_with_feature_name(name: str, work_part: NXOpen.Part=None) -> Optio
     return None
 
 
-def create_cylinder(point1: NXOpen.Point, point2: NXOpen.Point, diameter: float, length: float, work_part: NXOpen.Part=None) -> NXOpen.Features.Cylinder:
+def create_cylinder_between_two_points(point1: NXOpen.Point, point2: NXOpen.Point, diameter: float, length: float, work_part: NXOpen.Part=None) -> NXOpen.Features.Cylinder:
     """
     Create a cylinder between two points.
 
@@ -402,7 +406,7 @@ def get_faces_with_color(body: NXOpen.Body, color: int) -> List[NXOpen.Face]:
     return colored_faces
 
 
-def get_area_faces_with_color(bodies: List[NXOpen.Body], color: int) -> float:
+def get_area_faces_with_color(bodies: List[NXOpen.Body], color: int, work_part: NXOpen.Part=None) -> float:
     """
     Get the total area of faces with a specific color in a list of bodies.
 
@@ -416,12 +420,14 @@ def get_area_faces_with_color(bodies: List[NXOpen.Body], color: int) -> float:
     Returns
     -------
     float
-        The total area of faces with the specified color.
+        The total area of faces, for all the bodies, (in mm2), with the specified color.
 
     NOTES
     -----
     Tested in Simcenter 2212
     """
+    if work_part is None:
+        work_part = the_session.Parts.Work
     area_unit: NXOpen.Unit = work_part.UnitCollection.FindObject("SquareMilliMeter")
     length_unit: NXOpen.Unit = work_part.UnitCollection.FindObject("MilliMeter")
     area: float = 0.0
@@ -431,7 +437,7 @@ def get_area_faces_with_color(bodies: List[NXOpen.Body], color: int) -> float:
     return area
 
 
-def create_line(point1: NXOpen.Point, point2: NXOpen.Point, work_part: NXOpen.Part=None) -> NXOpen.Features.AssociativeLine:
+def create_line_between_two_points(point1: NXOpen.Point, point2: NXOpen.Point, work_part: NXOpen.Part=None) -> NXOpen.Features.AssociativeLine:
     """
     Create a line between two points.
 
@@ -495,3 +501,34 @@ def delete_feature(feature_to_delete: NXOpen.Features.Feature) -> None:
     the_session.UpdateManager.AddObjectsToDeleteList([feature_to_delete])
     id1 = the_session.NewestVisibleUndoMark
     the_session.UpdateManager.DoUpdate(id1)
+
+
+def cross_product_vector3d(vector1: NXOpen.Vector3d, vector2: NXOpen.Vector3d) -> NXOpen.Vector3d:
+    """
+    Calculate the cross product of two vectors.
+
+    Parameters:
+        vector1 (NXOpen.Vector3d): The first vector.
+        vector2 (NXOpen.Vector3d): The second vector.
+
+    Returns:
+        NXOpen.Vector3d: The cross product of the two vectors.
+    """
+    x = vector1.Y * vector2.Z - vector2.Y * vector1.Z
+    y = vector1.Z * vector2.X - vector2.Z * vector1.X
+    z = vector1.X * vector2.Y - vector2.X * vector1.Y
+    return NXOpen.Vector3d(x, y, z)
+
+
+def dot_product_vector3d(vector1: NXOpen.Vector3d, vector2: NXOpen.Vector3d) -> float:
+    """
+    Calculate the dot product of two vectors.
+
+    Parameters:
+        vector1 (NXOpen.Vector3d): The first vector.
+        vector2 (NXOpen.Vector3d): The second vector.
+
+    Returns:
+        float: The dot product of the two vectors.
+    """
+    return vector1.X * vector2.X + vector1.Y * vector2.Y + vector1.Z * vector2.Z

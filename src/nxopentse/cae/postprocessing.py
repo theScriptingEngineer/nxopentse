@@ -119,12 +119,18 @@ def get_results_units(base_result_types: List[NXOpen.CAE.BaseResultType]) -> Lis
     -------
     NXOpen.Unit
         A list of unit for each resulttype
+    
+    Notes
+    -----
+    Tested in 2306.
     """
 
     result_units: List[NXOpen.Unit] = [NXOpen.Unit] * len(base_result_types)
     for i in range(len(base_result_types)):
-        components: List[NXOpen.CAE.Result.Component] = base_result_types[i].AskComponents()
-        result_units[i] = base_result_types[i].AskDefaultUnitForComponent(components[0])
+        components: List[] = base_result_types[i].AskComponents()
+        # AskComponents returns a list with 2 elements: a list of strings and a list of NXOpen.CAE.Result.Component
+        # the list of string is the name of the components, the list of NXOpen.CAE.Result.Component is the actual components
+        result_units[i] = base_result_types[i].AskDefaultUnitForComponent(components[1][0])
 
     return result_units
 
@@ -468,7 +474,22 @@ def combine_results(post_inputs: List[PostInput], formula: str, companion_result
 
 
 def export_result(post_input: PostInput, unv_file_name: str, si_units: bool = False) -> None:
-    """Export a single result to universal file."""
+    """
+    Export a single result to universal file.
+
+    Parameters
+    ----------
+    post_input: PostInput
+        The postinput defining the result to export.
+    unv_file_name: str
+        The name of the unv file to export to.
+    si_units: bool [optional]
+        If set to True, the units are set to SI units. Defaults to False, which is then the Simcenter default.
+
+    Notes
+    -----
+    Tested in SC2306
+    """
     if not isinstance(base_part, NXOpen.CAE.SimPart):
         the_lw.WriteFullline("ExportResult needs to start from a .sim file. Exiting")
         return
@@ -531,16 +552,16 @@ def export_result(post_input: PostInput, unv_file_name: str, si_units: bool = Fa
         # in case you want to set a userdefined units system
         user_defined_unit_system: NXOpen.CAE.Result.ResultBasicUnit = NXOpen.CAE.Result.ResultBasicUnit()
         units: List[NXOpen.Unit] = sim_part.UnitCollection
-        # Prints a list of all available units
-        for item in units:
-            the_lw.WriteFullline(item.TypeName)
-        
-        user_defined_unit_system.AngleUnit = [item for item in units if item.TypeName == "Radian"]
-        user_defined_unit_system.LengthUnit = [item for item in units if item.TypeName == "Meter"]
-        user_defined_unit_system.MassUnit = [item for item in units if item.TypeName == "Kilogram"]
-        user_defined_unit_system.TemperatureUnit = [item for item in units if item.TypeName == "Celcius"]
-        user_defined_unit_system.ThermalenergyUnit = [item for item in units if item.TypeName == "ThermalEnergy_Metric1"]
-        user_defined_unit_system.TimeUnit = [item for item in units if item.TypeName == "Second"]
+        # # Prints a list of all available units
+        # for item in units:
+        #     the_lw.WriteFullline(item.TypeName)
+
+        user_defined_unit_system.AngleUnit = [item for item in units if item.TypeName == "Radian"][0]
+        user_defined_unit_system.LengthUnit = [item for item in units if item.TypeName == "Meter"][0]
+        user_defined_unit_system.MassUnit = [item for item in units if item.TypeName == "Kilogram"][0]
+        user_defined_unit_system.TemperatureUnit = [item for item in units if item.TypeName == "Celsius"][0]
+        user_defined_unit_system.ThermalenergyUnit = [item for item in units if item.TypeName == "ThermalEnergy_Metric1"][0]
+        user_defined_unit_system.TimeUnit = [item for item in units if item.TypeName == "Second"][0]
         results_combination_builder.SetUnitsSystem(NXOpen.CAE.ResultsManipulationBuilder.UnitsSystem.UserDefined)
         results_combination_builder.SetUserDefinedUnitsSystem(user_defined_unit_system)
         # if set to false, dataset 164 is not added and the results are ambiguos for external use
