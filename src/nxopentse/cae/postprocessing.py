@@ -8,7 +8,7 @@ import NXOpen.UF
 import NXOpen.Fields
 from typing import List, cast, Tuple, Dict
 
-from .preprocessing import get_nodes_in_group
+from .preprocessing import get_nodes_in_group, get_solution
 from ..tools import create_full_path
 
 the_session = NXOpen.Session.GetSession()
@@ -50,29 +50,6 @@ class PostInput:
         return "Solution: " + self._solution + " Subcase: " + str(self._subcase) + " Iteration: " + str(self._iteration) + " ResultType: " + self._resultType + " Identifier: " + self._identifier
 
 
-def get_solution(solution_name: str) -> NXOpen.CAE.SimSolution:
-    """This function returns the SimSolution object with the given name.
-
-    Parameters
-    ----------
-    solution_name: str
-        The name of the solution to return. Case insensitive.
-
-    Returns
-    -------
-    NXOpen.CAE.SimSolution
-        Returns a list of SolutionResult.
-    """
-    sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, base_part) # explicit casting makes it clear
-    sim_simulation: NXOpen.CAE.SimSimulation = sim_part.Simulation
-
-    sim_solutions: List[NXOpen.CAE.SimSolution] = [item for item in sim_simulation.Solutions if item.Name.lower() == solution_name.lower()]
-    if len(sim_solutions) == 0:
-        return None
-    
-    return sim_solutions[0]
-
-
 def load_results(post_inputs: List[PostInput], reference_type: str = "Structural") -> List[NXOpen.CAE.SolutionResult]:
     """Loads the results for the given list of PostInput and returns a list of SolutionResult.
     An exception is raised if the result does not exist (-> to check if CreateReferenceResult raises error or returns None)
@@ -98,7 +75,7 @@ def load_results(post_inputs: List[PostInput], reference_type: str = "Structural
 
         try:
             # SolutionResult[filename_solutionname]
-            solution_results[i] = cast(NXOpen.CAE.SolutionResult, the_session.ResultManager.FindObject("SolutionResult[" + sys.Path.GetFileName(simPart.FullPath) + "_" + sim_solution.Name + "]"))
+            solution_results[i] = cast(NXOpen.CAE.SolutionResult, the_session.ResultManager.FindObject("SolutionResult[" + os.path.basename(simPart.FullPath) + "_" + sim_solution.Name + "]"))
         except:
             the_uf_session.Ui.DisplayMessage("Loading results for " + post_inputs[i]._solution + " SubCase " + str(post_inputs[i]._subcase) + " Iteration " + str(post_inputs[i]._iteration) + " ResultType " + post_inputs[i]._resultType)
             solution_results[i] = the_session.ResultManager.CreateReferenceResult(sim_result_reference)
@@ -127,7 +104,7 @@ def get_results_units(base_result_types: List[NXOpen.CAE.BaseResultType]) -> Lis
 
     result_units: List[NXOpen.Unit] = [NXOpen.Unit] * len(base_result_types)
     for i in range(len(base_result_types)):
-        components: List[] = base_result_types[i].AskComponents()
+        components: List[NXOpen.CAE.Result.Component] = base_result_types[i].AskComponents()
         # AskComponents returns a list with 2 elements: a list of strings and a list of NXOpen.CAE.Result.Component
         # the list of string is the name of the components, the list of NXOpen.CAE.Result.Component is the actual components
         result_units[i] = base_result_types[i].AskDefaultUnitForComponent(components[1][0])
@@ -389,7 +366,7 @@ def combine_results(post_inputs: List[PostInput], formula: str, companion_result
         # we still return the tehcnical message as an additional log
         the_lw.WriteFullline(str(e))
         return
-    except:
+    except Exception as e:
         the_lw.WriteFullline("Did not execute CombineResults due to general error. Please check the previous messages.")
         # we still return the tehcnical message as an additional log
         the_lw.WriteFullline(str(e))
@@ -506,7 +483,7 @@ def export_result(post_input: PostInput, unv_file_name: str, si_units: bool = Fa
         # we still return the tehcnical message as an additional log
         the_lw.WriteFullline(str(e))
         return
-    except:
+    except Exception as e:
         the_lw.WriteFullline("Did not execute ExportResult due to general error. Please check the previous messages.")
         # we still return the tehcnical message as an additional log
         the_lw.WriteFullline(str(e))

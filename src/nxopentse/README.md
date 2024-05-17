@@ -37,7 +37,7 @@ workflow (VSCode):
   - increase the version number so that it doesn't clash with test.pypi or pypi
   - local commit
   - tag the commit, with the same version number as above
-  - push/sync wioth github
+  - push/sync with github
 
 
 ## Build the package manually (for reference only)
