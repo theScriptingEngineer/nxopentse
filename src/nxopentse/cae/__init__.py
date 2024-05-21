@@ -38,6 +38,13 @@ from .preprocessing import hello, \
                             get_solution, \
                             set_solution_property, \
                             get_nodes_in_group, \
-                            create_displacement_field
+                            create_displacement_field, \
+                            get_all_fe_elements, \
+                            add_related_nodes_and_elements
 
 from .solving import solve_solution, solve_all_solutions, solve_dat_file
+
+from .unversal_file import create_thickness_header, \
+                            create_thickness_records, \
+                            create_thickness_datasets, \
+                            write_thickness_results
