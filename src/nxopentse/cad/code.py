@@ -3,6 +3,7 @@ import math
 from typing import List, Optional, cast
 
 import NXOpen
+import NXOpen.Features
 
 
 the_session: NXOpen.Session = NXOpen.Session.GetSession()
