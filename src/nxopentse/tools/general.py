@@ -2,6 +2,7 @@ import os
 from typing import List, cast
 
 import NXOpen
+import NXOpen.Assemblies
 import NXOpen.CAE
 import NXOpen.UF
 
