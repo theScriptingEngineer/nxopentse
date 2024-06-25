@@ -13,6 +13,4 @@ from .code import   nx_hello,\
                     get_area_faces_with_color, \
                     get_area_faces_with_color, \
                     create_line_between_two_points, \
-                    delete_feature, \
-                    cross_product_vector3d, \
-                    dot_product_vector3d
+                    delete_feature

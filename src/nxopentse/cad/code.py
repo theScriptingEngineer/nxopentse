@@ -3,6 +3,7 @@ import math
 from typing import List, Optional, cast
 
 import NXOpen
+import NXOpen.Features
 
 
 the_session: NXOpen.Session = NXOpen.Session.GetSession()
@@ -514,32 +515,33 @@ def delete_feature(feature_to_delete: NXOpen.Features.Feature) -> None:
     the_session.UpdateManager.DoUpdate(id1)
 
 
-def cross_product_vector3d(vector1: NXOpen.Vector3d, vector2: NXOpen.Vector3d) -> NXOpen.Vector3d:
+def get_named_datum_planes(cad_part: NXOpen.Part) -> List[NXOpen.DatumPlane]:
     """
-    Calculate the cross product of two vectors.
+    Searches the part for all datum planes with a name and returns them.
+    Naming a datum plane is done by right-clicking on the plane in the GUI and selecting rename.
 
-    Parameters:
-        vector1 (NXOpen.Vector3d): The first vector.
-        vector2 (NXOpen.Vector3d): The second vector.
+    Parameters
+    ----------
+    cad_part: NXOpen.Part
+        The part for which to return the named datum planes.
 
-    Returns:
-        NXOpen.Vector3d: The cross product of the two vectors.
+    Returns
+    -------
+    List[NXOpen.DatumPlane]
+        A list with the named datum planes.
+    
+    Notes
+    -----
+    Tested in SC2306
     """
-    x = vector1.Y * vector2.Z - vector2.Y * vector1.Z
-    y = vector1.Z * vector2.X - vector2.Z * vector1.X
-    z = vector1.X * vector2.Y - vector2.X * vector1.Y
-    return NXOpen.Vector3d(x, y, z)
+    named_datum_planes: List[NXOpen.DatumPlane] = []
+    for item in cad_part.Datums: # type: ignore
+        # cad_part.Datums.ToArray() will also contain datum axis (if present)
+        if type(item) is NXOpen.DatumPlane:
+            # item is a datum plane. Now check if it has a name.
+            # Note Feature.Name and not Name
+            if cast(NXOpen.DatumPlane, item).Feature.Name != "":
+                named_datum_planes.append(cast(NXOpen.DatumPlane, item))
+    
+    return named_datum_planes
 
-
-def dot_product_vector3d(vector1: NXOpen.Vector3d, vector2: NXOpen.Vector3d) -> float:
-    """
-    Calculate the dot product of two vectors.
-
-    Parameters:
-        vector1 (NXOpen.Vector3d): The first vector.
-        vector2 (NXOpen.Vector3d): The second vector.
-
-    Returns:
-        float: The dot product of the two vectors.
-    """
-    return vector1.X * vector2.X + vector1.Y * vector2.Y + vector1.Z * vector2.Z

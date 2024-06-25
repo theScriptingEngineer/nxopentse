@@ -77,7 +77,7 @@ def load_results(post_inputs: List[PostInput], reference_type: str = "Structural
             # SolutionResult[filename_solutionname]
             solution_results[i] = cast(NXOpen.CAE.SolutionResult, the_session.ResultManager.FindObject("SolutionResult[" + os.path.basename(simPart.FullPath) + "_" + sim_solution.Name + "]"))
         except:
-            the_uf_session.Ui.DisplayMessage("Loading results for " + post_inputs[i]._solution + " SubCase " + str(post_inputs[i]._subcase) + " Iteration " + str(post_inputs[i]._iteration) + " ResultType " + post_inputs[i]._resultType)
+            the_uf_session.Ui.SetStatus("Loading results for " + post_inputs[i]._solution + " SubCase " + str(post_inputs[i]._subcase) + " Iteration " + str(post_inputs[i]._iteration) + " ResultType " + post_inputs[i]._resultType)
             solution_results[i] = the_session.ResultManager.CreateReferenceResult(sim_result_reference)
 
     return solution_results
