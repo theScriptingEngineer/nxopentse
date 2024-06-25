@@ -1,6 +1,8 @@
 import os
+from typing import List, cast
 
 import NXOpen
+import NXOpen.Assemblies
 import NXOpen.CAE
 import NXOpen.UF
 
@@ -45,3 +47,108 @@ def create_full_path(file_name: str, extension: str = ".unv") -> str:
         file_name = os.path.join(os.path.dirname(base_part.FullPath), file_name)
 
     return file_name
+
+
+def indentation(level: int) -> str:
+    """
+    Helper method to create indentations (eg tabs) with a given length.
+    Can be used in print strings in a tree like structure
+
+    Parameters
+    ----------
+    level: int
+        The depth of the indentations.
+
+    Returns
+    -------
+    str
+        The indentation
+    
+    Notes
+    -----
+    Tested in SC2306
+    """
+    indentation: str = ""
+    for i in range(level + 1):
+        indentation += "\t"
+    
+    return indentation
+
+
+def print_component_tree(component: NXOpen.Assemblies.Component, requested_level: int = 0) -> None:
+    """
+    Prints the component tree for the given component to the listing window.
+    Recursive function
+
+    Parameters
+    ----------
+    component: NXOpen.Assemblies.Component
+        The component for whch to print the component tree
+    requested_level: int
+        Optional parameter used for creating indentations.
+    
+    Notes
+    -----
+    Tested in SC2306
+    """
+    level: int = requested_level
+    the_lw.WriteFullline(indentation(level) + "| " + component.JournalIdentifier + " is a compont(instance) of " + component.Prototype.OwningPart.Name + " located in " + component.OwningPart.Name)
+    children: List[NXOpen.Assemblies.Component] = component.GetChildren()
+    for i in range(len(children) -1, -1, -1):
+        print_component_tree(children[i], level + 1)
+
+
+def print_part_tree(base_part: NXOpen.BasePart, requested_level: int = 0) -> None:
+    """
+    Prints the part tree for the given BasePart to the listing window.
+    Recursive function
+
+    Parameters
+    ----------
+    base_part: NXOpen.BasePart
+        The BasePart to print the tree for.
+    requested_level: int
+        Optional parameter used for creating indentations.
+    
+    Notes
+    -----
+    Tested in SC2306
+    """
+    level: int = requested_level
+    if isinstance(base_part, NXOpen.CAE.SimPart):
+        # it's a .sim part
+        sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, base_part)
+        the_lw.WriteFullline(sim_part.Name)
+
+        # both are equal:
+        # print_part_tree(sim_part.ComponentAssembly.RootComponent.GetChildren()[0].Prototype.OwningPart)
+        print_part_tree(sim_part.FemPart)
+    
+    elif isinstance(base_part, NXOpen.CAE.AssyFemPart):
+        # it's a .afem part
+        assy_fem_part: NXOpen.CAE.AssyFemPart = cast(NXOpen.CAE.AssyFemPart, base_part)
+        the_lw.WriteFullline(indentation(level) + "| " + assy_fem_part.Name + " located in " + assy_fem_part.FullPath + " linked to part " + assy_fem_part.FullPathForAssociatedCadPart)
+        children: List[NXOpen.Assemblies.Component] = cast(NXOpen.Assemblies.ComponentAssembly, assy_fem_part.ComponentAssembly).RootComponent.GetChildren()
+        for i in range(len(children) - 1):
+            print_part_tree(children[i].Prototype.OwningPart, level + 1)
+    
+    elif isinstance(base_part, NXOpen.CAE.FemPart):
+        # it's a .fem part
+        fem_part: NXOpen.CAE.FemPart = cast(NXOpen.CAE.FemPart, base_part)
+        # try except since calling femPart.FullPathForAssociatedCadPart on a part which has no cad part results in an error
+        try:
+            # femPart.MasterCadPart returns the actual part, but is null if the part is not loaded.
+            the_lw.WriteFullline(indentation(level) + "| " + fem_part.Name + " which is linked to part " + fem_part.FullPathForAssociatedCadPart)
+        except:
+            # femPart has no associated cad part
+            the_lw.WriteFullline(indentation(level) + "| " + fem_part.Name + " not linked to a part.")
+    
+    else:
+        # it's a .prt part, but can still contain components
+        the_lw.WriteFullline(indentation(level) + "| " + base_part.Name + " located in " + base_part.FullPath)
+        if cast(NXOpen.Assemblies.ComponentAssembly, base_part.ComponentAssembly).RootComponent == None:
+            return
+        children: List[NXOpen.Assemblies.Component] = cast(NXOpen.Assemblies.ComponentAssembly, base_part.ComponentAssembly).RootComponent.GetChildren()
+        for i in range(len(children)):
+            print_part_tree(children[i].Prototype.OwningPart, level + 1)
+

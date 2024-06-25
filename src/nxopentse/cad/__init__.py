@@ -1,5 +1,4 @@
 from .code import   nx_hello,\
-                    create_point, \
                     get_all_bodies,\
                     get_faces_of_type, \
                     get_all_points,\
@@ -12,7 +11,6 @@ from .code import   nx_hello,\
                     get_faces_of_body, \
                     get_area_faces_with_color, \
                     get_area_faces_with_color, \
+                    create_point, \
                     create_line_between_two_points, \
-                    delete_feature, \
-                    cross_product_vector3d, \
-                    dot_product_vector3d
+                    delete_feature

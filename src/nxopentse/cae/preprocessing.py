@@ -1045,4 +1045,170 @@ def create_displacement_field(field_name: str, file_name: str) -> NXOpen.Fields.
     return field_table
 
 
+def create_linear_acceleration(gx: float, gy: float, gz: float, force_name: str, sim_part: NXOpen.CAE.SimPart=None) -> Optional[NXOpen.CAE.SimBC]:
+    """
+    Create or edit a linear acceleration load in a SimPart.
+
+    Parameters
+    ----------
+    gx : float
+        The acceleration in the x-direction in mm/s^2.
+    gy : float
+        The acceleration in the y-direction in mm/s^2.
+    gz : float
+        The acceleration in the z-direction in mm/s^2.
+    forceName : str
+        The name of the load to create or edit.
+
+    Returns
+    -------
+    NXOpen.CAE.SimBC
+        The created or edited SimBC object.
+
+    Notes
+    -----
+    Use create_linear_acceleration(0, 0, -9810, "Gravity") to create a gravity load
+    Tested in SC2212
+
+    """
+    if sim_part is None:
+        sim_part = cast(NXOpen.CAE.SimPart, the_session.Parts.BaseWork)
+
+    sim_simulation = sim_part.Simulation
+
+    # set solution to inactive so load is not automatically added upon creation
+    sim_part.Simulation.ActiveSolution = None
+
+    # Check if load already exists
+    sim_loads: List[NXOpen.CAE.SimLoad] = [item for item in sim_part.Simulation.Loads]
+    sim_load: List[NXOpen.CAE.SimLoad] = [item for item in sim_loads if item.Name.lower() == force_name.lower()]
+
+    if len(sim_load) == 0:
+        # no load with the given name, thus creating the load
+        sim_bc_builder = sim_simulation.CreateBcBuilderForLoadDescriptor("ComponentGravityField", force_name)
+    else:
+        # a load with the given name already exists therefore editing the load
+        sim_bc_builder = sim_simulation.CreateBcBuilderForBc(sim_load[0])
+
+    propertyTable = sim_bc_builder.PropertyTable
+    setManager = sim_bc_builder.TargetSetManager
+
+    objects1 = [NXOpen.CAE.SetObject()]
+    objects1[0].Obj = None
+    objects1[0].SubType = NXOpen.CAE.CaeSetObjectSubType.Part
+    objects1[0].SubId = 0
+    setManager.SetTargetSetMembers(0, NXOpen.CAE.CaeSetGroupFilterType.ValueOf(-1), objects1)
+
+    vectorFieldWrapper = propertyTable.GetVectorFieldWrapperPropertyValue("CartesianMagnitude")
+    unitMilliMeterPerSquareSecond = sim_part.UnitCollection.FindObject("MilliMeterPerSquareSecond")
+
+    expressionAx = vectorFieldWrapper.GetExpressionByIndex(0)
+    sim_part.Expressions.EditWithUnits(expressionAx, unitMilliMeterPerSquareSecond, str(gx))
+
+    expressionAy = vectorFieldWrapper.GetExpressionByIndex(1)
+    sim_part.Expressions.EditWithUnits(expressionAy, unitMilliMeterPerSquareSecond, str(gy))
+
+    expressionAz = vectorFieldWrapper.GetExpressionByIndex(2)
+    sim_part.Expressions.EditWithUnits(expressionAz, unitMilliMeterPerSquareSecond, str(gz))
+
+    expressions = [expressionAx, expressionAy, expressionAz]
+    vectorFieldWrapper.SetExpressions(expressions)
+
+    propertyTable.SetVectorFieldWrapperPropertyValue("CartesianMagnitude", vectorFieldWrapper)
+    propertyTable.SetTablePropertyWithoutValue("CylindricalMagnitude")
+
+    propertyTable.SetVectorFieldWrapperPropertyValue("CylindricalMagnitude", None)
+    propertyTable.SetTablePropertyWithoutValue("SphericalMagnitude")
+    propertyTable.SetVectorFieldWrapperPropertyValue("SphericalMagnitude", None)
+
+    propertyValue1 = [""]
+    propertyTable.SetTextPropertyValue("description", propertyValue1)
+
+    sim_bc_builder.DestinationFolder = None
+
+    simBC = sim_bc_builder.CommitAddBc()
+
+    sim_bc_builder.Destroy()
+
+    return simBC
+
+def get_all_fe_elements(base_fem_part: NXOpen.CAE.BaseFemPart=None) -> Dict[int, NXOpen.CAE.FEElement]:
+    """
+    Get all elements from the model.
+    Note that this is the most performant way to do so.
+
+    Parameters
+    ----------
+    base_fem_part: NXOpen.CAE.BaseFemPart
+        The BaseFemPart to get the elements from.
+
+    Returns
+    -------
+    List[NXOpen.CAE.FEElement]
+        A list of all FEElements in the base_fem_part
+    
+    Notes
+    -----
+    Tested in SC2306
+    """
+    if base_fem_part is None:
+        base_fem_part = cast(NXOpen.CAE.BaseFemPart,the_session.Parts.Work)
+    all_elements: Dict[int, NXOpen.CAE.FEElement] = {}
+    fe_element_label_map = base_fem_part.BaseFEModel.FeelementLabelMap
+    element_label: int = fe_element_label_map.AskNextElementLabel(0)
+    while (element_label > 0):
+        all_elements[element_label] = fe_element_label_map.GetElement(element_label)
+        element_label = fe_element_label_map.AskNextElementLabel(element_label)
+    
+    # sort the dict (valid for python 3.7+) even thought the items should be in order from the element label map
+    all_elements = dict(sorted(all_elements.items()))
+    return all_elements
+
+
+def add_related_nodes_and_elements(cae_part: NXOpen.CAE.CaePart):
+    """
+    This function cycles through all cae groups in a CaePart.
+    For each group it adds the related nodes and elements for the bodies and faces in the group.
+    Practical for repopulating groups after a (partial) remesh.
+    Function is idempotent.
+
+    Parameters
+    ----------
+    fem_part: NXOpen.CAE.FemPart
+        The CaePart to perform this operation on.
+    
+    Notes
+    -----
+    Tested in SC2306
+    """
+    cae_groups: List[NXOpen.CAE.CaeGroup] = cae_part.CaeGroups
+    for group in cae_groups: # type: ignore
+        the_lw.WriteFullline("Processing group " + group.Name)
+        seeds_body: List[NXOpen.CAE.CAEBody] = []
+        seeds_face: List[NXOpen.CAE.CAEFace] = []
+
+        for tagged_object in group.GetEntities():
+            if type(tagged_object) is NXOpen.CAE.CAEBody:
+                seeds_body.append(cast(NXOpen.CAE.CAEBody, tagged_object))
+            
+            elif type(tagged_object) is NXOpen.CAE.CAEFace:
+                seeds_face.append(cast(NXOpen.CAE.CAEFace, tagged_object))
+
+        smart_selection_manager: NXOpen.CAE.SmartSelectionManager = cae_part.SmartSelectionMgr
+
+        related_element_method_body: NXOpen.CAE.RelatedElemMethod = smart_selection_manager.CreateRelatedElemMethod(seeds_body, False)
+        # related_node_method_body: NXOpen.CAE.RelatedNodeMethod = smart_selection_manager.CreateNewRelatedNodeMethodFromBody(seeds_body, False)
+        # comment previous line and uncomment next line for NX version 2007 (release 2022.1) and later
+        related_node_method_body: NXOpen.CAE.RelatedElemMethod = smart_selection_manager.CreateNewRelatedNodeMethodFromBodies(seeds_body, False, False)
+
+        group.AddEntities(related_element_method_body.GetElements())
+        group.AddEntities(related_node_method_body.GetNodes())
+
+        related_element_method_face: NXOpen.CAE.RelatedElemMethod = smart_selection_manager.CreateRelatedElemMethod(seeds_face, False)
+        # related_node_method_face: NXOpen.CAE.RelatedElemMethod = smart_selection_manager.CreateRelatedNodeMethod(seeds_face, False)
+        # comment previous line and uncomment next line for NX version 2007 (release 2022.1) and later
+        related_node_method_face: NXOpen.CAE.RelatedElemMethod = smart_selection_manager.CreateNewRelatedNodeMethodFromFaces(seeds_face, False, False)
+
+        group.AddEntities(related_element_method_face.GetElements())
+        group.AddEntities(related_node_method_face.GetNodes())
 
