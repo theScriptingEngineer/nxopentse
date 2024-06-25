@@ -2,8 +2,8 @@
 # such that only the imports from the subpackages are available.
 # this should make nxopentse much more clean
 from .cad import code
-from .cae import postprocessing, preprocessing, solving
-from .tools import excel, general
+from .cae import postprocessing, preprocessing, solving, unversal_file
+from .tools import excel, general, vector_arithmetic
 
 
 # from .cad.code import nx_hello,\

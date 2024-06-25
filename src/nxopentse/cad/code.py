@@ -4,7 +4,7 @@ from typing import List, Optional, cast
 
 import NXOpen
 import NXOpen.Features
-
+import NXOpen.GeometricUtilities
 
 the_session: NXOpen.Session = NXOpen.Session.GetSession()
 the_lw: NXOpen.ListingWindow = the_session.ListingWindow
@@ -424,7 +424,30 @@ def get_area_faces_with_color(bodies: List[NXOpen.Body], color: int, work_part: 
     return area
 
 
-def create_point(x_co: float, y_co: float, z_co: float, work_part: NXOpen.Part=None):
+def create_point(x_co: float, y_co: float, z_co: float, work_part: NXOpen.Part=None) -> NXOpen.Features.PointFeature:
+    """
+    Creates an point at the specified coordinates.
+
+    Parameters
+    ----------
+    x_co : float
+        The x-coordinate of the point in global coordinates in millimeter.
+    y_co : float
+        The y-coordinate of the point in global coordinates in millimeter.
+    z_co : float
+        The z-coordinate of the point in global coordinates in millimeter.
+    work_part : NXOpen.Part, optional
+        The part in which to create the point. Defaults to work part.
+
+    Returns
+    -------
+    NXOpen.Features.PointFeature
+        The point feature. Use the GetEntities() method to get the point.
+
+    NOTES
+    -----
+    Tested in Simcenter 2306
+    """
     if work_part is None:
         work_part = the_session.Parts.Work
 
