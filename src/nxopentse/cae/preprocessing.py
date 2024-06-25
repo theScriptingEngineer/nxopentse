@@ -1045,4 +1045,91 @@ def create_displacement_field(field_name: str, file_name: str) -> NXOpen.Fields.
     return field_table
 
 
+def create_linear_acceleration(gx: float, gy: float, gz: float, force_name: str, sim_part: NXOpen.CAE.SimPart=None) -> Optional[NXOpen.CAE.SimBC]:
+    """
+    Create or edit a linear acceleration load in a SimPart.
+
+    Parameters
+    ----------
+    gx : float
+        The acceleration in the x-direction in mm/s^2.
+    gy : float
+        The acceleration in the y-direction in mm/s^2.
+    gz : float
+        The acceleration in the z-direction in mm/s^2.
+    forceName : str
+        The name of the load to create or edit.
+
+    Returns
+    -------
+    NXOpen.CAE.SimBC
+        The created or edited SimBC object.
+
+    Notes
+    -----
+    Use create_linear_acceleration(0, 0, -9810, "Gravity") to create a gravity load
+    Tested in SC2212
+
+    """
+    if sim_part is None:
+        sim_part = cast(NXOpen.CAE.SimPart, the_session.Parts.BaseWork)
+
+    sim_simulation = sim_part.Simulation
+
+    # set solution to inactive so load is not automatically added upon creation
+    sim_part.Simulation.ActiveSolution = None
+
+    # Check if load already exists
+    sim_loads: List[NXOpen.CAE.SimLoad] = [item for item in sim_part.Simulation.Loads]
+    sim_load: List[NXOpen.CAE.SimLoad] = [item for item in sim_loads if item.Name.lower() == force_name.lower()]
+
+    if len(sim_load) == 0:
+        # no load with the given name, thus creating the load
+        sim_bc_builder = sim_simulation.CreateBcBuilderForLoadDescriptor("ComponentGravityField", force_name)
+    else:
+        # a load with the given name already exists therefore editing the load
+        sim_bc_builder = sim_simulation.CreateBcBuilderForBc(sim_load[0])
+
+    propertyTable = sim_bc_builder.PropertyTable
+    setManager = sim_bc_builder.TargetSetManager
+
+    objects1 = [NXOpen.CAE.SetObject()]
+    objects1[0].Obj = None
+    objects1[0].SubType = NXOpen.CAE.CaeSetObjectSubType.Part
+    objects1[0].SubId = 0
+    setManager.SetTargetSetMembers(0, NXOpen.CAE.CaeSetGroupFilterType.ValueOf(-1), objects1)
+
+    vectorFieldWrapper = propertyTable.GetVectorFieldWrapperPropertyValue("CartesianMagnitude")
+    unitMilliMeterPerSquareSecond = sim_part.UnitCollection.FindObject("MilliMeterPerSquareSecond")
+
+    expressionAx = vectorFieldWrapper.GetExpressionByIndex(0)
+    sim_part.Expressions.EditWithUnits(expressionAx, unitMilliMeterPerSquareSecond, str(gx))
+
+    expressionAy = vectorFieldWrapper.GetExpressionByIndex(1)
+    sim_part.Expressions.EditWithUnits(expressionAy, unitMilliMeterPerSquareSecond, str(gy))
+
+    expressionAz = vectorFieldWrapper.GetExpressionByIndex(2)
+    sim_part.Expressions.EditWithUnits(expressionAz, unitMilliMeterPerSquareSecond, str(gz))
+
+    expressions = [expressionAx, expressionAy, expressionAz]
+    vectorFieldWrapper.SetExpressions(expressions)
+
+    propertyTable.SetVectorFieldWrapperPropertyValue("CartesianMagnitude", vectorFieldWrapper)
+    propertyTable.SetTablePropertyWithoutValue("CylindricalMagnitude")
+
+    propertyTable.SetVectorFieldWrapperPropertyValue("CylindricalMagnitude", None)
+    propertyTable.SetTablePropertyWithoutValue("SphericalMagnitude")
+    propertyTable.SetVectorFieldWrapperPropertyValue("SphericalMagnitude", None)
+
+    propertyValue1 = [""]
+    propertyTable.SetTextPropertyValue("description", propertyValue1)
+
+    sim_bc_builder.DestinationFolder = None
+
+    simBC = sim_bc_builder.CommitAddBc()
+
+    sim_bc_builder.Destroy()
+
+    return simBC
+
 

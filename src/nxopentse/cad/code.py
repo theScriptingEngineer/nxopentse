@@ -17,50 +17,6 @@ def nx_hello():
     the_lw.WriteFullline("Hello from " + os.path.basename(__file__))
 
 
-def create_point(base_part: NXOpen.BasePart, x_co: float, y_co: float, z_co: float, color: int = 134, work_part: NXOpen.Part=None) -> NXOpen.Point:
-    """
-    Create a point at the specified coordinates.
-
-    Parameters
-    ----------
-    base_part : NXOpen.BasePart
-        The base part where the point will be created.
-    x_co : float
-        The x-coordinate of the point.
-    y_co : float
-        The y-coordinate of the point.
-    z_co : float
-        The z-coordinate of the point.
-    color : int, optional
-        The color to give the point.
-    work_part : NXOpen.Part, optional
-        The part in which to create the point. Defaults to work part.
-        
-    Returns
-    -------
-    NXOpen.Point3d
-        The created point.
-    """
-    if work_part is None:
-        work_part = the_session.Parts.Work
-    unit_mm: NXOpen.Unit = base_part.UnitCollection.FindObject("Millimeter")
-    exp_x: NXOpen.Expression = base_part.Expressions.CreateSystemExpressionWithUnits(str(x_co), unit_mm)
-    exp_y: NXOpen.Expression = base_part.Expressions.CreateSystemExpressionWithUnits(str(y_co), unit_mm)
-    exp_z: NXOpen.Expression = base_part.Expressions.CreateSystemExpressionWithUnits(str(z_co), unit_mm)
-
-    scalar_x: NXOpen.Scalar = base_part.Scalars.CreateScalarExpression(exp_x, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.AfterModeling)
-    scalar_y: NXOpen.Scalar = base_part.Scalars.CreateScalarExpression(exp_y, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.AfterModeling)
-    scalar_z: NXOpen.Scalar = base_part.Scalars.CreateScalarExpression(exp_z, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.AfterModeling)
-
-    point: NXOpen.Point = base_part.Points.CreatePoint(scalar_x, scalar_y, scalar_z, NXOpen.SmartObject.UpdateOption.AfterModeling)
-    point.Color = color
-    point.SetVisibility(NXOpen.SmartObject.VisibilityOption.Visible)
-    undo_mark: NXOpen.Session.UndoToMark = the_session.SetUndoMark(NXOpen.Session.MarkVisibility.Visible, "Point")
-    the_session.UpdateManager.DoUpdate(undo_mark)
-
-    return point
-
-
 def get_all_bodies(work_part: NXOpen.Part=None) -> List[NXOpen.Body]:
     """
     Get all the bodies in the work part.
@@ -153,6 +109,36 @@ def get_all_features(work_part: NXOpen.Part=None) -> List[NXOpen.Features.Featur
     for item in work_part.Features:
         all_features.append(item)
     return all_features
+
+
+def get_features_of_type(feature_type: type, work_part: NXOpen.Part=None) -> List[NXOpen.Features.Feature]:
+    """
+    Get all the features of a specified type in the work part.
+
+    Parameters
+    ----------
+    feature_type : type
+        The type of feature to search for.
+    work_part : NXOpen.Part, optional
+        The part in which to search for features.
+
+    Returns
+    -------
+    List[NXOpen.Features.Feature]
+        A list of all the features of the specified type in the work part.
+
+    NOTES
+    -----
+    Tested in Simcenter 2312
+    """
+    if work_part is None:
+        work_part = the_session.Parts.Work
+    features: List[NXOpen.Features.Feature] = []
+    for item in work_part.Features:
+        if type(item) == feature_type:
+            features.append(item)
+    
+    return features
 
 
 def get_feature_by_name(name: str, work_part: NXOpen.Part=None) -> Optional[List[NXOpen.Features.Feature]]:
@@ -437,6 +423,31 @@ def get_area_faces_with_color(bodies: List[NXOpen.Body], color: int, work_part: 
     return area
 
 
+def create_point(x_co: float, y_co: float, z_co: float, work_part: NXOpen.Part=None):
+    if work_part is None:
+        work_part = the_session.Parts.Work
+
+    unit_milli_meter = work_part.UnitCollection.FindObject("MilliMeter")
+    expression_x = work_part.Expressions.CreateSystemExpressionWithUnits(str(x_co), unit_milli_meter)
+    scalar_x = work_part.Scalars.CreateScalarExpression(expression_x, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling)
+    expression_y = work_part.Expressions.CreateSystemExpressionWithUnits(str(y_co), unit_milli_meter)
+    scalar_y = work_part.Scalars.CreateScalarExpression(expression_y, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling)
+    expression_z = work_part.Expressions.CreateSystemExpressionWithUnits(str(z_co), unit_milli_meter)
+    scalar_z = work_part.Scalars.CreateScalarExpression(expression_z, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling)
+
+
+    point2 = work_part.Points.CreatePoint(scalar_x, scalar_y, scalar_z, NXOpen.SmartObject.UpdateOption.WithinModeling)
+    point2.SetVisibility(NXOpen.SmartObject.VisibilityOption.Visible)
+    
+    point_feature_builder = work_part.BaseFeatures.CreatePointFeatureBuilder(NXOpen.Features.Feature.Null)
+    point_feature_builder.Point = point2
+    point_feature: NXOpen.Features.PointFeature = point_feature_builder.Commit()
+    
+    point_feature_builder.Destroy()
+
+    return point_feature
+
+
 def create_line_between_two_points(point1: NXOpen.Point, point2: NXOpen.Point, work_part: NXOpen.Part=None) -> NXOpen.Features.AssociativeLine:
     """
     Create a line between two points.
@@ -478,7 +489,7 @@ def create_line_between_two_points(point1: NXOpen.Point, point2: NXOpen.Point, w
     associative_line_builder.Limits.EndLimit.LimitOption = NXOpen.GeometricUtilities.CurveExtendData.LimitOptions.AtPoint
     # times 1.2 to make sure the line is long enough
     associative_line_builder.Limits.EndLimit.LimitOption = NXOpen.GeometricUtilities.CurveExtendData.LimitOptions.Value
-    associative_line_builder.Limits.EndLimit.Distance.SetFormula(str(distance_between_points * 1.2))
+    associative_line_builder.Limits.EndLimit.Distance.SetFormula(str(distance_between_points))
 
     associative_line_feature = associative_line_builder.Commit()
     associative_line_builder.Destroy()
