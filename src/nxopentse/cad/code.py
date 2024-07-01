@@ -511,9 +511,6 @@ def create_line_between_two_points(point1: NXOpen.Point, point2: NXOpen.Point, w
                                         (point2.Coordinates.Y-point1.Coordinates.Y)**2 + \
                                         (point2.Coordinates.Z-point1.Coordinates.Z)**2)
     associative_line_builder.Limits.EndLimit.LimitOption = NXOpen.GeometricUtilities.CurveExtendData.LimitOptions.AtPoint
-    # times 1.2 to make sure the line is long enough
-    associative_line_builder.Limits.EndLimit.LimitOption = NXOpen.GeometricUtilities.CurveExtendData.LimitOptions.Value
-    associative_line_builder.Limits.EndLimit.Distance.SetFormula(str(distance_between_points))
 
     associative_line_feature = associative_line_builder.Commit()
     associative_line_builder.Destroy()

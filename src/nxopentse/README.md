@@ -25,6 +25,16 @@ Documentation from source using Sphinx
 There is a build pipeline in Github which automatically publishes to test.pypi and pypi (the latter only on tagged commits)
 So there is no need to manually build an upload to either test.pypi or pypi
 
+
+## local development
+Using the stanard approach of installing a package locally by using
+```pip install -e . ``` From where the package is defined, does not work. It looks like NX just reads the code in *C:\Users\<your user name>>\AppData\Local\Programs\Python\Python310\Lib\site-packages*
+
+The workaround is to create a symbolic link to the source code. For that one needs to open a powershell with admin rights and run the following command:
+```New-Item -ItemType SymbolicLink -Path C:\Users\<your user name>\AppData\Local\Programs\Python\Python310\Lib\site-packages\nxopentse -Target "C:\Github\nxopentse\src\nxopentse"```
+
+This creates a symbolic link between the folder where NX looks for code and the source code of nxopentse.
+
 ## Tagging
 ``` git tag -a v0.0.1a1 -m "pre-release - can be used. Partially tested. Will still contain lots of bugs" ```
 > **NOTE:** Tags don't get pushed automatically. Use ```git push origin --tags```
