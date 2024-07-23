@@ -1,3 +1,25 @@
+from .preprocessing import hello, \
+                            create_node, \
+                            create_nodal_constraint, \
+                            create_nodal_force_default_name, \
+                            create_nodal_force, \
+                            create_nodal_moment, \
+                            add_solver_set_to_subcase, \
+                            add_load_to_solver_set, \
+                            create_solver_set, \
+                            add_load_to_subcase, \
+                            add_constraint_to_solution, \
+                            add_constraint_to_subcase, \
+                            create_subcase, \
+                            create_solution, \
+                            get_solution, \
+                            set_solution_property, \
+                            get_nodes_in_group, \
+                            create_displacement_field, \
+                            get_all_fe_elements, \
+                            add_related_nodes_and_elements, \
+                            copy_groups_to_sim_part
+
 from .postprocessing import PostInput, \
                             hello, \
                             get_solution, \
@@ -21,30 +43,26 @@ from .postprocessing import PostInput, \
                             add_companion_result, \
                             write_submodel_data_to_file
 
-from .preprocessing import hello, \
-                            create_node, \
-                            create_nodal_constraint, \
-                            create_nodal_force_default_name, \
-                            create_nodal_force, \
-                            create_nodal_moment, \
-                            add_solver_set_to_subcase, \
-                            add_load_to_solver_set, \
-                            create_solver_set, \
-                            add_load_to_subcase, \
-                            add_constraint_to_solution, \
-                            add_constraint_to_subcase, \
-                            create_subcase, \
-                            create_solution, \
-                            get_solution, \
-                            set_solution_property, \
-                            get_nodes_in_group, \
-                            create_displacement_field, \
-                            get_all_fe_elements, \
-                            add_related_nodes_and_elements
-
 from .solving import solve_solution, solve_all_solutions, solve_dat_file
 
 from .unversal_file import create_thickness_header, \
                             create_thickness_records, \
                             create_thickness_datasets, \
                             write_thickness_results
+
+from .results_display import ScreenShot, \
+                             sort_screenshots, \
+                             check_screenshots, \
+                             read_screenshot_definitions, \
+                             display_result, \
+                             set_post_template, \
+                             change_component, \
+                             display_elements_in_group_via_postgroup, \
+                             display_elements_in_group, \
+                             display_elements_in_group_using_workaround, \
+                             map_group_to_postgroup, \
+                             create_annotation, \
+                             set_camera, \
+                             save_view_to_file, \
+                             delete_post_groups, \
+                             create_screen_shots
