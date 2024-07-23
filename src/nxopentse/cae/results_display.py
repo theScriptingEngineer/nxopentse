@@ -124,6 +124,8 @@ def read_screenshot_definitions(file_path: str) -> List[ScreenShot]:
     with open(file_path, 'r') as file:
         csv_string: List[str] = file.readlines()
     
+    # the_lw.WriteFullline(csv_string)
+    
     screenshots_from_file: List[ScreenShot] = []
     for line in csv_string:
         if line == "" or len(line) == 1: # empty line has length 1...
@@ -135,7 +137,7 @@ def read_screenshot_definitions(file_path: str) -> List[ScreenShot]:
                 the_lw.WriteFullline("Item " + str(i) + ": " + values[i])
             raise Exception("There should be 10 items in each input line, separated by commas. Please check the input above and make sure not to use commas in the names.")
 
-        entry: ScreenShot = ScreenShot()
+        entry: ScreenShot = ScreenShot("", "", -1, "")
         entry._file_name = values[0].strip()
         entry._annotation_text = values[1].strip()
         entry._template_name = values[2].strip()
@@ -157,7 +159,7 @@ def read_screenshot_definitions(file_path: str) -> List[ScreenShot]:
 
 def display_result(post_input: PostInput, solution_result: NXOpen.CAE.SolutionResult, component_name: str) -> int:
     # Only set the result and the component, the rest is through the template.
-    result_type: NXOpen.CAE.ResultType = get_result_types([post_input], [solution_result])
+    result_type: NXOpen.CAE.ResultType = get_result_types([post_input], [solution_result])[0]
     # Get the component object from the string componentName
     # note this needs to be exact. The check is done when checking the user input.
     component: NXOpen.CAE.Result.Component = getattr(NXOpen.CAE.Result.Component, component_name)
@@ -509,7 +511,7 @@ def create_screen_shots() -> None:
         change_component(postview_id, screenshots[i]._component_name)
 
         # Set the group to display, using the workaround described earlier
-        display_elements_in_group_using_workaround(postview_id, screenshots[i]._group_name, sim_part)
+        display_elements_in_group_using_workaround(postview_id, screenshots[i]._group_name)
 
         # Create the annotation but only if one given.
         post_annotation: NXOpen.CAE.PostAnnotation = None

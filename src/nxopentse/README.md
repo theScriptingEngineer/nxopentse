@@ -35,7 +35,7 @@ The workaround is to create a symbolic link to the source code. For that one nee
 
 This creates a symbolic link between the folder where NX looks for code and the source code of nxopentse.
 
-Unfortunately, changes in the code, are only available upon nx restart...
+It looks like changes in the code, are only available upon nx restart...
 
 ## Tagging
 ``` git tag -a v0.0.1a1 -m "pre-release - can be used. Partially tested. Will still contain lots of bugs" ```

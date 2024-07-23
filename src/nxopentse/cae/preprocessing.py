@@ -7,6 +7,8 @@ import NXOpen
 import NXOpen.CAE
 import NXOpen.UF
 
+from ..tools import create_string_attribute
+
 
 the_session: NXOpen.Session = NXOpen.Session.GetSession()
 the_uf_session: NXOpen.UF.UFSession = NXOpen.UF.UFSession.GetUFSession()
