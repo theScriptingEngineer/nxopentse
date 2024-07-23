@@ -7,6 +7,8 @@ import NXOpen
 import NXOpen.CAE
 import NXOpen.UF
 
+from ..tools import create_string_attribute
+
 
 the_session: NXOpen.Session = NXOpen.Session.GetSession()
 the_uf_session: NXOpen.UF.UFSession = NXOpen.UF.UFSession.GetUFSession()
@@ -1212,3 +1214,40 @@ def add_related_nodes_and_elements(cae_part: NXOpen.CAE.CaePart):
         group.AddEntities(related_element_method_face.GetElements())
         group.AddEntities(related_node_method_face.GetNodes())
 
+
+def copy_groups_to_sim_part(sim_part: NXOpen.CAE.SimPart=None, groups_in_screenshots: List[str]=[]) -> List[NXOpen.CAE.CaeGroup]:
+    if sim_part is None:
+        if not isinstance(the_session.Parts.BaseWork, NXOpen.CAE.SimPart):
+            raise ValueError("copy_groups_to_sim_part needs to be called on a .sim file!")
+        sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, the_session.Parts.BaseWork)
+
+    copied_groups: List[NXOpen.CAE.CaeGroup] = []
+    sim_groups: List[NXOpen.CAE.CaeGroup] = [item for item in sim_part.CaeGroups]
+    for i in range(len(sim_groups)):
+        # don't copy the group if it's not used in the screenshots
+        if not sim_groups[i].Name in groups_in_screenshots:
+            continue
+        # dont copy the group if it's a sim group
+        if sim_groups[i].OwningComponent is None:
+            # the_lw.WriteFullline(f'{i} {sim_groups[i].Name} is a sim group')
+            continue
+        # skip output groups since these are not user created.
+        if sim_groups[i].Name == "OUTPUT GROUP":
+            # the_lw.WriteFullline(f'{i} {sim_groups[i].Name} is a sim group')
+            continue
+        # don't copy the group if it has been copied earlier
+        test: List[NXOpen.CAE.CaeGroup] = [item for item in sim_groups if item.Name == sim_groups[i].Name + '_screenshot_generator_temp']
+        if len(test) > 0:
+            # the_lw.WriteFullline(f'{i} {sim_groups[i].Name} already has a temp group')
+            continue
+        else:
+            enties = sim_groups[i].GetEntities()
+            # the_lw.WriteFullline(f'{i} {sim_groups[i].Name} with {len(enties)} entities')
+            if len(enties) == 0:
+                # the_lw.WriteFullline(f'{i} {sim_groups[i].Name} has no entities')
+                continue
+            group: NXOpen.CAE.CaeGroup = sim_part.CaeGroups.CreateGroup(sim_groups[i].Name + '_screenshot_generator_temp', sim_groups[i].GetEntities())
+            create_string_attribute(group, 'screenshot_generator', 'true')
+            copied_groups.append(group)
+    
+    return copied_groups

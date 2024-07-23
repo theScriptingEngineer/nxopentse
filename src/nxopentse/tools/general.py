@@ -152,3 +152,27 @@ def print_part_tree(base_part: NXOpen.BasePart, requested_level: int = 0) -> Non
         for i in range(len(children)):
             print_part_tree(children[i].Prototype.OwningPart, level + 1)
 
+
+def create_string_attribute(nx_object: NXOpen.NXObject, title: str, value: str, work_part: NXOpen.BasePart=None) -> None:
+    if work_part is None:
+        work_part = the_session.Parts.BaseWork
+    objects1 = [NXOpen.NXObject.Null] * 1 
+    objects1[0] = nx_object
+    attribute_manager: NXOpen.AttributeManager = the_session.AttributeManager
+    attributePropertiesBuilder1 = attribute_manager.CreateAttributePropertiesBuilder(work_part, objects1, NXOpen.AttributePropertiesBuilder.OperationType.NotSet) # type: ignore
+    
+    attributePropertiesBuilder1.IsArray = False
+    
+    attributePropertiesBuilder1.DataType = NXOpen.AttributePropertiesBaseBuilder.DataTypeOptions.String
+    
+    attributePropertiesBuilder1.Title = title
+    
+    attributePropertiesBuilder1.StringValue = value
+    
+    nXObject1 = attributePropertiesBuilder1.Commit()
+    
+    id1 = the_session.GetNewestUndoMark(NXOpen.Session.MarkVisibility.Visible)
+    
+    nErrs1 = the_session.UpdateManager.DoUpdate(id1)
+    
+    attributePropertiesBuilder1.Destroy()    

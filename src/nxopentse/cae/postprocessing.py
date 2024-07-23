@@ -50,7 +50,7 @@ class PostInput:
         return "Solution: " + self._solution + " Subcase: " + str(self._subcase) + " Iteration: " + str(self._iteration) + " ResultType: " + self._resultType + " Identifier: " + self._identifier
 
 
-def load_results(post_inputs: List[PostInput], reference_type: str = "Structural") -> List[NXOpen.CAE.SolutionResult]:
+def load_results(post_inputs: List[PostInput], reference_type: str = "Structural", sim_part: NXOpen.CAE.SimPart=None) -> List[NXOpen.CAE.SolutionResult]:
     """Loads the results for the given list of PostInput and returns a list of SolutionResult.
     An exception is raised if the result does not exist (-> to check if CreateReferenceResult raises error or returns None)
 
@@ -60,14 +60,20 @@ def load_results(post_inputs: List[PostInput], reference_type: str = "Structural
         The result of each of the provided solutions is loaded.
     reference_type: str
         The type of SimResultReference eg. Structural. Defaults to structral
-
+    sim_part: NXOpen.CAE.SimPart
+        The SimPart to load the results on. Defaults to None, which means the current work part.
+    
     Returns
     -------
     NXOpen.CAE.SolutionResult
         Returns a list of SolutionResult.
     """
+    if sim_part is None:
+        if not isinstance(the_session.Parts.BaseWork, NXOpen.CAE.SimPart):
+            raise ValueError("map_group_to_postgroup needs to be called on a .sim file!")
+        sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, the_session.Parts.BaseWork)
+
     solution_results: List[NXOpen.CAE.SolutionResult] = [NXOpen.CAE.SolutionResult] * len(post_inputs)
-    simPart: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, base_part)
 
     for i in range(len(post_inputs)):
         sim_solution: NXOpen.CAE.SimSolution = get_solution(post_inputs[i]._solution)
