@@ -602,6 +602,7 @@ def envelope_results(post_inputs: List[PostInput], companion_result_name: str, u
     -----
     Only works in NX1980 or higher due to the use of NXOpen.CAE.ResultsManipulationEnvelopeBuilder
     Tested in SC2212. Stil issue with companion result not automatically adding (but it gets created an can be added manually after a file close/reopen)
+    Tested in SC2306. Stil issue with companion result not automatically adding (but it gets created an can be added manually after a file close/reopen)
     """
     if not isinstance(base_part, NXOpen.CAE.SimPart):
         the_lw.WriteFullline("ExportResult needs to start from a .sim file. Exiting")
@@ -1054,6 +1055,7 @@ def add_companion_result(solution_name: str, companion_result_file_name: str, re
     Notes
     -----
     Tested in SC2212
+    Tested in SC2306
 
     """
     sim_result_reference: NXOpen.CAE.SimResultReference = get_sim_result_reference(solution_name, reference_type)

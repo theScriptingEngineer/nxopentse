@@ -6,6 +6,7 @@ from typing import List, cast, Optional, Union, Dict
 import NXOpen
 import NXOpen.CAE
 import NXOpen.UF
+import NXOpen.Fields
 
 from ..tools import create_string_attribute
 
@@ -805,6 +806,7 @@ def create_solution(solution_name: str, output_requests: str = "Structural Outpu
     Notes
     -----
     Tested with only solution name in SC2212.
+    Tested in SC2312 with all parameters.
 
     """
     # check if started from a SimPart, returning othwerwise
@@ -833,8 +835,8 @@ def create_solution(solution_name: str, output_requests: str = "Structural Outpu
         # check if default exists
         bulk_data_property_table: List[NXOpen.CAE.ModelingObjectPropertyTable] = [item for item in sim_part.ModelingObjectPropertyTables if item.Name.lower() == "Bulk Data Echo Request1".lower()]
         if len(bulk_data_property_table) == 0:
-            # default does also not exist. Create it
-            bulk_data_property_table = sim_part.ModelingObjectPropertyTables.CreateModelingObjectPropertyTable("Bulk Data Echo Request", "NX NASTRAN - Structural", "NX NASTRAN", "Bulk Data Echo Request1", 1000)
+            # default does also not exist. Create it and put it in a list such that when setting it, we can use the index
+            bulk_data_property_table = [sim_part.ModelingObjectPropertyTables.CreateModelingObjectPropertyTable("Bulk Data Echo Request", "NX NASTRAN - Structural", "NX NASTRAN", "Bulk Data Echo Request1", 1000)]
 
     property_table.SetNamedPropertyTablePropertyValue("Bulk Data Echo Request", bulk_data_property_table[0])
 
@@ -846,10 +848,10 @@ def create_solution(solution_name: str, output_requests: str = "Structural Outpu
         # check if default exists
         output_requests_property_table = [item for item in sim_part.ModelingObjectPropertyTables if item.Name.lower() == "Structural Output Requests1".lower()]
         if len(output_requests_property_table) == 0:
-            # default does also not exist. Create it
-            output_requests_property_table = sim_part.ModelingObjectPropertyTables.CreateModelingObjectPropertyTable("Structural Output Requests", "NX NASTRAN - Structural", "NX NASTRAN", "Bulk Data Echo Request1", 1001)
+            # default does also not exist. Create it and put it in a list such that when setting it, we can use the index
+            output_requests_property_table = [sim_part.ModelingObjectPropertyTables.CreateModelingObjectPropertyTable("Structural Output Requests", "NX NASTRAN - Structural", "NX NASTRAN", "Structural Output Requests1", 1001)]
             # set Von Mises stress location to corner
-            output_requests_property_table.PropertyTable.SetIntegerPropertyValue("Stress - Location", 1)
+            output_requests_property_table[0].PropertyTable.SetIntegerPropertyValue("Stress - Location", 1)
 
 
     property_table.SetNamedPropertyTablePropertyValue("Output Requests", output_requests_property_table[0])
@@ -1133,6 +1135,7 @@ def create_linear_acceleration(gx: float, gy: float, gz: float, force_name: str,
     sim_bc_builder.Destroy()
 
     return simBC
+
 
 def get_all_fe_elements(base_fem_part: NXOpen.CAE.BaseFemPart=None) -> Dict[int, NXOpen.CAE.FEElement]:
     """
