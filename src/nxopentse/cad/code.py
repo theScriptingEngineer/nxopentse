@@ -14,7 +14,7 @@ def nx_hello():
     """
     Print a greeting message to the listing window.
     """
-    the_lw.WriteFullline("Hello, World!")
+    the_lw.WriteFullline("Hello, simon World!")
     the_lw.WriteFullline("Hello from " + os.path.basename(__file__))
 
 
@@ -472,6 +472,7 @@ def create_point(x_co: float, y_co: float, z_co: float, work_part: NXOpen.Part=N
     return point_feature
 
 
+#def create_line_between_two_points(point1: NXOpen.Point, point2: NXOpen.Point, work_part: NXOpen.Part=None) -> NXOpen.Features.AssociativeLine:
 def create_line_between_two_points(point1: NXOpen.Point, point2: NXOpen.Point, work_part: NXOpen.Part=None) -> NXOpen.Features.AssociativeLine:
     """
     Create a line between two points.
@@ -517,6 +518,14 @@ def create_line_between_two_points(point1: NXOpen.Point, point2: NXOpen.Point, w
 
     associative_line_feature = associative_line_builder.Commit()
     associative_line_builder.Destroy()
+
+     # Get the name of the created line feature
+    line_name = associative_line_feature.Name
+
+    # Log the name of the created line to the NX log file
+    the_session.LogFile.WriteLine(f"Created line name: {line_name}")
+
+
     return cast(NXOpen.Features.AssociativeLine, associative_line_feature)
 
 

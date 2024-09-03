@@ -4,7 +4,7 @@
 from .cad import code
 from .cae import postprocessing, preprocessing, solving, unversal_file
 from .tools import excel, general, vector_arithmetic
-
+from .motion import code, custom_classes, mechanism
 
 # from .cad.code import nx_hello,\
 #                     create_point, \
