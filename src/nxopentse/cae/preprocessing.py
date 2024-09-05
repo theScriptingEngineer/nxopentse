@@ -182,7 +182,7 @@ def create_nodal_constraint(node_label: int, dx: float, dy : float, dz: float, r
     Notes
     -----
     Tested in SC2212
-
+    Tested in SC2312
     """
     # check if started from a SimPart, returning othwerwise
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
@@ -284,6 +284,10 @@ def create_nodal_force_default_name(node_label: int, fx: float, fy : float, fz: 
     -------
     NXOpen.CAE.SimBC
         Returns the created force.
+
+    Notes
+    -----
+    Tested in SC2312
     """
     defaultName: str = "Nodalforce_" + str(node_label)
     nodal_force: NXOpen.CAE.SimBC = create_nodal_force(node_label, fx, fy, fz, defaultName)
@@ -310,6 +314,10 @@ def create_nodal_force(node_label: int, fx: float, fy: float, fz: float, force_n
     -------
     NXOpen.CAE.SimBC
         Returns the created force.
+
+    Notes
+    -----
+    Tested in SC2312
     """
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
     # check if started from a SimPart, returning othwerwise
@@ -467,6 +475,10 @@ def add_solver_set_to_subcase(solution_name: str, subcase_name: str, solver_set_
         The name of the subcase to add the solver set to.
     solver_set_name: str
         The name of the solver set to add.
+
+    Notes
+    -----
+    Tested in SC2312
     """
     # check if started from a SimPart, returning othwerwise
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
@@ -518,6 +530,10 @@ def add_load_to_solver_set(solver_set_name: str, load_name: str) -> None:
         The name of the solver set to add the load to.
     load_name: str
         The name of the load to add to the solver set.
+
+    Notes
+    -----
+    Tested in SC2312
     """
     # check if started from a SimPart, returning othwerwise
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
@@ -561,6 +577,10 @@ def create_solver_set(solver_set_name: str) -> Optional[NXOpen.CAE.SimLoadSet]:
     -------
     NXOpen.CAE.SimLoadSet or None
         Returns the created solver set if created. None otherwise
+
+    Notes
+    -----
+    Tested in SC2312
     """
     # check if started from a SimPart, returning othwerwise
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
@@ -649,6 +669,7 @@ def add_constraint_to_solution(solution_name: str, constraint_name: str) -> None
     Notes
     -----
     Tested in SC2212
+    Tested in SC2312
     """
     # check if started from a SimPart, returning othwerwise
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
