@@ -6,6 +6,7 @@ from typing import List, cast, Optional, Union, Dict
 import NXOpen
 import NXOpen.CAE
 import NXOpen.UF
+import NXOpen.Fields
 
 from ..tools import create_string_attribute
 
@@ -181,7 +182,7 @@ def create_nodal_constraint(node_label: int, dx: float, dy : float, dz: float, r
     Notes
     -----
     Tested in SC2212
-
+    Tested in SC2312
     """
     # check if started from a SimPart, returning othwerwise
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
@@ -283,6 +284,10 @@ def create_nodal_force_default_name(node_label: int, fx: float, fy : float, fz: 
     -------
     NXOpen.CAE.SimBC
         Returns the created force.
+
+    Notes
+    -----
+    Tested in SC2312
     """
     defaultName: str = "Nodalforce_" + str(node_label)
     nodal_force: NXOpen.CAE.SimBC = create_nodal_force(node_label, fx, fy, fz, defaultName)
@@ -309,6 +314,10 @@ def create_nodal_force(node_label: int, fx: float, fy: float, fz: float, force_n
     -------
     NXOpen.CAE.SimBC
         Returns the created force.
+
+    Notes
+    -----
+    Tested in SC2312
     """
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
     # check if started from a SimPart, returning othwerwise
@@ -466,6 +475,10 @@ def add_solver_set_to_subcase(solution_name: str, subcase_name: str, solver_set_
         The name of the subcase to add the solver set to.
     solver_set_name: str
         The name of the solver set to add.
+
+    Notes
+    -----
+    Tested in SC2312
     """
     # check if started from a SimPart, returning othwerwise
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
@@ -517,6 +530,10 @@ def add_load_to_solver_set(solver_set_name: str, load_name: str) -> None:
         The name of the solver set to add the load to.
     load_name: str
         The name of the load to add to the solver set.
+
+    Notes
+    -----
+    Tested in SC2312
     """
     # check if started from a SimPart, returning othwerwise
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
@@ -560,6 +577,10 @@ def create_solver_set(solver_set_name: str) -> Optional[NXOpen.CAE.SimLoadSet]:
     -------
     NXOpen.CAE.SimLoadSet or None
         Returns the created solver set if created. None otherwise
+
+    Notes
+    -----
+    Tested in SC2312
     """
     # check if started from a SimPart, returning othwerwise
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
@@ -648,6 +669,7 @@ def add_constraint_to_solution(solution_name: str, constraint_name: str) -> None
     Notes
     -----
     Tested in SC2212
+    Tested in SC2312
     """
     # check if started from a SimPart, returning othwerwise
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
@@ -805,6 +827,7 @@ def create_solution(solution_name: str, output_requests: str = "Structural Outpu
     Notes
     -----
     Tested with only solution name in SC2212.
+    Tested in SC2312 with all parameters.
 
     """
     # check if started from a SimPart, returning othwerwise
@@ -833,8 +856,8 @@ def create_solution(solution_name: str, output_requests: str = "Structural Outpu
         # check if default exists
         bulk_data_property_table: List[NXOpen.CAE.ModelingObjectPropertyTable] = [item for item in sim_part.ModelingObjectPropertyTables if item.Name.lower() == "Bulk Data Echo Request1".lower()]
         if len(bulk_data_property_table) == 0:
-            # default does also not exist. Create it
-            bulk_data_property_table = sim_part.ModelingObjectPropertyTables.CreateModelingObjectPropertyTable("Bulk Data Echo Request", "NX NASTRAN - Structural", "NX NASTRAN", "Bulk Data Echo Request1", 1000)
+            # default does also not exist. Create it and put it in a list such that when setting it, we can use the index
+            bulk_data_property_table = [sim_part.ModelingObjectPropertyTables.CreateModelingObjectPropertyTable("Bulk Data Echo Request", "NX NASTRAN - Structural", "NX NASTRAN", "Bulk Data Echo Request1", 1000)]
 
     property_table.SetNamedPropertyTablePropertyValue("Bulk Data Echo Request", bulk_data_property_table[0])
 
@@ -846,10 +869,10 @@ def create_solution(solution_name: str, output_requests: str = "Structural Outpu
         # check if default exists
         output_requests_property_table = [item for item in sim_part.ModelingObjectPropertyTables if item.Name.lower() == "Structural Output Requests1".lower()]
         if len(output_requests_property_table) == 0:
-            # default does also not exist. Create it
-            output_requests_property_table = sim_part.ModelingObjectPropertyTables.CreateModelingObjectPropertyTable("Structural Output Requests", "NX NASTRAN - Structural", "NX NASTRAN", "Bulk Data Echo Request1", 1001)
+            # default does also not exist. Create it and put it in a list such that when setting it, we can use the index
+            output_requests_property_table = [sim_part.ModelingObjectPropertyTables.CreateModelingObjectPropertyTable("Structural Output Requests", "NX NASTRAN - Structural", "NX NASTRAN", "Structural Output Requests1", 1001)]
             # set Von Mises stress location to corner
-            output_requests_property_table.PropertyTable.SetIntegerPropertyValue("Stress - Location", 1)
+            output_requests_property_table[0].PropertyTable.SetIntegerPropertyValue("Stress - Location", 1)
 
 
     property_table.SetNamedPropertyTablePropertyValue("Output Requests", output_requests_property_table[0])
@@ -1133,6 +1156,7 @@ def create_linear_acceleration(gx: float, gy: float, gz: float, force_name: str,
     sim_bc_builder.Destroy()
 
     return simBC
+
 
 def get_all_fe_elements(base_fem_part: NXOpen.CAE.BaseFemPart=None) -> Dict[int, NXOpen.CAE.FEElement]:
     """

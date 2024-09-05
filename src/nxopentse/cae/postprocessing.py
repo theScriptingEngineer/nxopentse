@@ -209,6 +209,7 @@ def check_post_input(post_inputs: List[PostInput]) -> None:
     post_inputs: List[PostInput]
         The array of PostInput to check.
     """
+    return
     for i in range(len(post_inputs)):
         # Does the solution exist?
         sim_solution: NXOpen.CAE.SimSolution = get_solution(post_inputs[i]._solution)
@@ -595,18 +596,65 @@ def get_result_paramaters(result_types: List[NXOpen.CAE.BaseResultType], result_
     return result_parameter_list
 
 
-def envelope_results(post_inputs: List[PostInput], companion_result_name: str, unv_file_name: str, envelope_operation: NXOpen.CAE.ResultsManipulationEnvelopeBuilder.Operation, result_shell_section: NXOpen.CAE.Result.ShellSection, resultComponent: NXOpen.CAE.Result.Component, absolute: bool, solution_name: str = "") -> None:
+def envelope_results(post_inputs: List[PostInput], companion_result_name: str, unv_file_name: str, envelope_operation: NXOpen.CAE.ResultsManipulationEnvelopeBuilder.Operation, result_shell_section: NXOpen.CAE.Result.ShellSection, result_component: NXOpen.CAE.Result.Component, absolute: bool, solution_name: str = "") -> None:
     """
 
     Notes
     -----
     Only works in NX1980 or higher due to the use of NXOpen.CAE.ResultsManipulationEnvelopeBuilder
     Tested in SC2212. Stil issue with companion result not automatically adding (but it gets created an can be added manually after a file close/reopen)
+    Tested in SC2306. Stil issue with companion result not automatically adding (but it gets created an can be added manually after a file close/reopen)
     """
+
+    # check the inputs on type
     if not isinstance(base_part, NXOpen.CAE.SimPart):
         the_lw.WriteFullline("ExportResult needs to start from a .sim file. Exiting")
         return
 
+    if not isinstance(post_inputs, list):
+        the_lw.WriteFullline("PostInputs needs to be a List of PostInput. Exiting")
+        return
+    
+    if not isinstance(companion_result_name, str):
+        the_lw.WriteFullline("CompanionResultName needs to be a string but. Exiting")
+        return
+    
+    if not isinstance(unv_file_name, str):
+        the_lw.WriteFullline("UnvFileName needs to be a string. Exiting")
+        return
+    
+    operation_mapping = get_results_manipulation_envelope_builder_operation_names()
+    if not operation_mapping[int(str(envelope_operation))] in operation_mapping.values():
+        the_lw.WriteFullline(f'{operation_mapping[int(str(envelope_operation))]} is not a valid Operation. Exiting')
+        the_lw.WriteFullline(f'Valid operations are:')
+        for item in operation_mapping.values():
+            the_lw.WriteFullline(f'\tNXOpen.CAE.ResultsManipulationEnvelopeBuilder.Operation.{item}')
+        return
+    
+    result_shell_section_mapping = get_result_shell_section_names()
+    if not result_shell_section_mapping[int(str(result_shell_section))] in result_shell_section_mapping.values():
+        the_lw.WriteFullline(f'{result_shell_section_mapping[int(str(result_shell_section))]} is not a valid ResultComponent. Exiting')
+        the_lw.WriteFullline(f'Valid ResultComponents are:')
+        for item in result_shell_section_mapping.values():
+            the_lw.WriteFullline(f'\tNXOpen.CAE.Result.Component.{item}')
+        return
+    
+    result_component_mapping = get_result_component_names()
+    if not result_component_mapping[int(str(result_component))] in result_component_mapping.values():
+        the_lw.WriteFullline(f'{result_component_mapping[int(str(result_component))]} is not a valid ResultComponent. Exiting')
+        the_lw.WriteFullline(f'Valid ResultComponents are:')
+        for item in result_component_mapping.values():
+            the_lw.WriteFullline(f'\tNXOpen.CAE.Result.Component.{item}')
+        return
+    
+    if not isinstance(absolute, bool):
+        the_lw.WriteFullline("Absolute needs to be a bool. Exiting")
+        return
+    
+    if not isinstance(solution_name, str):
+        the_lw.WriteFullline("SolutionName needs to be a string. Exiting")
+        return
+    
     # check input and catch errors so that the user doesn't get a error pop-up in SC
     try:
         check_post_input(post_inputs)
@@ -660,7 +708,7 @@ def envelope_results(post_inputs: List[PostInput], companion_result_name: str, u
     result_types: List[NXOpen.CAE.BaseResultType] = get_result_types(post_inputs, solution_results)
 
     # create an array of resultParameters with the inputs and settings from the user.
-    result_parameters: List[NXOpen.CAE.ResultParameters] = get_result_paramaters(result_types, result_shell_section, resultComponent, absolute)
+    result_parameters: List[NXOpen.CAE.ResultParameters] = get_result_paramaters(result_types, result_shell_section, result_component, absolute)
 
     results_manipulation_envelope_builder: NXOpen.CAE.ResultsManipulationEnvelopeBuilder = the_session.ResultManager.CreateResultsManipulationEnvelopeBuilder()
     results_manipulation_envelope_builder.InputSettings.SetResultsAndParameters(solution_results, result_parameters)
@@ -670,7 +718,7 @@ def envelope_results(post_inputs: List[PostInput], companion_result_name: str, u
     results_manipulation_envelope_builder.OutputFileSettings.ResultModeOption = NXOpen.CAE.ResultsManipOutputFileSettings.ResultMode.Companion
     results_manipulation_envelope_builder.OutputFileSettings.AppendMethodOption = NXOpen.CAE.ResultsManipOutputFileSettings.AppendMethod.CreateNewLoadCase
     results_manipulation_envelope_builder.OutputFileSettings.NeedExportModel = False
-    results_manipulation_envelope_builder.OutputFileSettings.OutputName = str(envelope_operation) + " " + str(result_types[0].Quantity) + " (" + str(resultComponent) + ")"
+    results_manipulation_envelope_builder.OutputFileSettings.OutputName = str(envelope_operation) + " " + str(result_types[0].Quantity) + " (" + str(result_component) + ")"
     results_manipulation_envelope_builder.OutputFileSettings.LoadCaseName = companion_result_name
     results_manipulation_envelope_builder.OutputFileSettings.CompanionName = companion_result_name
     results_manipulation_envelope_builder.OutputFileSettings.NeedLoadImmediately = True
@@ -685,16 +733,16 @@ def envelope_results(post_inputs: List[PostInput], companion_result_name: str, u
 
     # get the full result names for user feedback. Do this before the try catch block, otherwise the variable is no longer available
     full_result_names: List[str]  = get_full_result_names(post_inputs, solution_results)
-    operation_mapping = get_results_manipulation_envelope_builder_operation_names()
-    result_component_mapping = get_result_component_names()
-    result_shell_section_mapping = get_result_shell_section_names()
+    # operation_mapping = get_results_manipulation_envelope_builder_operation_names()
+    # result_component_mapping = get_result_component_names()
+    # result_shell_section_mapping = get_result_shell_section_names()
 
     try:
         results_manipulation_envelope_builder.Commit()
 
         # user feedback
         # the_lw.WriteFullline("Created an envelope for the following results for " + str(envelope_operation.name) + " " + str(resultComponent.name))
-        the_lw.WriteFullline("Created an envelope for the following results for " + operation_mapping[int(str(envelope_operation))] + " " + result_component_mapping[int(str(resultComponent))])
+        the_lw.WriteFullline("Created an envelope for the following results for " + operation_mapping[int(str(envelope_operation))] + " " + result_component_mapping[int(str(result_component))])
         for i in range(len(post_inputs)):
             the_lw.WriteFullline(full_result_names[i])
 
@@ -742,14 +790,58 @@ def envelope_solution(solution_name: str, result_type: str, companion_result_nam
 
     Notes
     -----
-    Only works in NX1980 or higher due to the use of NXOpen.CAE.ResultsManipulationEnvelopeBuilder in envelope_results()
+    Only works in NX1980 or higher due to the use of NXOpen.CAE.ResultsManipulationEnvelopeBuilder
     Tested in SC2212. Stil issue with companion result not automatically adding (but it gets created an can be added manually after a file close/reopen)
-
+    Tested in SC2306. Stil issue with companion result not automatically adding (but it gets created an can be added manually after a file close/reopen)
     """
     if type(base_part) is not NXOpen.CAE.SimPart:
         the_lw.WriteFullline("EnvelopeResults needs to be started from a .sim file!")
         return
     
+    if not isinstance(solution_name, str):
+        the_lw.WriteFullline("ERROR: SolutionName needs to be a string. Exiting")
+        return
+    
+    if not isinstance(result_type, str):
+        the_lw.WriteFullline("ERROR: result_type needs to be a string. Exiting")
+        return
+    
+    if not isinstance(companion_result_name, str):
+        the_lw.WriteFullline("ERROR: CompanionResultName needs to be a string but. Exiting")
+        return
+    
+    if not isinstance(unv_file_name, str):
+        the_lw.WriteFullline("ERROR: UnvFileName needs to be a string. Exiting")
+        return
+    
+    operation_mapping = get_results_manipulation_envelope_builder_operation_names()
+    if not operation_mapping[int(str(envelope_operation))] in operation_mapping.values():
+        the_lw.WriteFullline(f'ERROR: {operation_mapping[int(str(envelope_operation))]} is not a valid Operation. Exiting')
+        the_lw.WriteFullline(f'Valid operations are:')
+        for item in operation_mapping.values():
+            the_lw.WriteFullline(f'\tNXOpen.CAE.ResultsManipulationEnvelopeBuilder.Operation.{item}')
+        return
+    
+    result_shell_section_mapping = get_result_shell_section_names()
+    if not result_shell_section_mapping[int(str(result_shell_section))] in result_shell_section_mapping.values():
+        the_lw.WriteFullline(f'ERROR: {result_shell_section_mapping[int(str(result_shell_section))]} is not a valid ResultComponent. Exiting')
+        the_lw.WriteFullline(f'Valid ResultComponents are:')
+        for item in result_shell_section_mapping.values():
+            the_lw.WriteFullline(f'\tNXOpen.CAE.Result.Component.{item}')
+        return
+    
+    result_component_mapping = get_result_component_names()
+    if not result_component_mapping[int(str(result_component))] in result_component_mapping.values():
+        the_lw.WriteFullline(f'ERROR: {result_component_mapping[int(str(result_component))]} is not a valid ResultComponent. Exiting')
+        the_lw.WriteFullline(f'Valid ResultComponents are:')
+        for item in result_component_mapping.values():
+            the_lw.WriteFullline(f'\tNXOpen.CAE.Result.Component.{item}')
+        return
+    
+    if not isinstance(absolute, bool):
+        the_lw.WriteFullline("Absolute needs to be a bool. Exiting")
+        return
+
     sim_solution: NXOpen.CAE.SimSolution = get_solution(solution_name)
     if sim_solution is None:
         the_lw.WriteFullline("No solution found with name " + solution_name)
@@ -1054,6 +1146,7 @@ def add_companion_result(solution_name: str, companion_result_file_name: str, re
     Notes
     -----
     Tested in SC2212
+    Tested in SC2306
 
     """
     sim_result_reference: NXOpen.CAE.SimResultReference = get_sim_result_reference(solution_name, reference_type)

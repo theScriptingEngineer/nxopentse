@@ -37,6 +37,15 @@ This creates a symbolic link between the folder where NX looks for code and the 
 
 It looks like changes in the code, are only available upon nx restart...
 
+
+## merge development branch with main
+``` git checkout main ```
+``` git pull origin main ```
+``` git merge development ```
+Check the version number and adjust accordingly. might require additional commit
+``` git git merge development ```
+Tag (see next section) and sync
+
 ## Tagging
 ``` git tag -a v0.0.1a1 -m "pre-release - can be used. Partially tested. Will still contain lots of bugs" ```
 > **NOTE:** Tags don't get pushed automatically. Use ```git push origin --tags```
@@ -50,6 +59,9 @@ workflow (VSCode):
   - local commit
   - tag the commit, with the same version number as above
   - push/sync with github
+
+
+
 
 
 ## Build the package manually (for reference only)
