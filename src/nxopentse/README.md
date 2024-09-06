@@ -15,7 +15,8 @@ General tools which can be used in different NX applications.
 
 ## NX versions
 ### SC2212:
-
+### SC2312:
+Older versions will currently not work, but we're working on support from NX12 onwards.
 
 # Documentation
 Documentation from source using Sphinx
@@ -40,18 +41,24 @@ It looks like changes in the code, are only available upon nx restart...
 
 ## merge development branch with main
 ``` git checkout main ```
-``` git pull origin main ```
-``` git merge development ```
+
 Check the version number and adjust accordingly. might require additional commit
-``` git git merge development ```
+
+
+``` git pull origin main ```
+
+``` git merge development ```
+
+
 Tag (see next section) and sync
 
 ## Tagging
 ``` git tag -a v0.0.1a1 -m "pre-release - can be used. Partially tested. Will still contain lots of bugs" ```
+
 > **NOTE:** Tags don't get pushed automatically. Use ```git push origin --tags```
 > 
 > 
-> or configure "git.followTagsWhenSync": true
+> or in VSCode configure "git.followTagsWhenSync": true
 > preferences -> extensions -> git -> check Follow tags when sync
 
 workflow (VSCode):
