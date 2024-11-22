@@ -19,7 +19,31 @@ the_lw: NXOpen.ListingWindow = the_session.ListingWindow
 
 
 class ScreenShot(PostInput):
-    """A class for declaring screenshots, inherits from PostInput"""
+    """
+    A class for defining screenshots, inherits from PostInput.
+
+    Attributes
+    ----------
+    _file_name : str
+        The file name of the screenshot.
+    _annotation_text : str
+        The annotation text to display on the screenshot.
+    _template_name : str
+        The name of the postview template to apply for the screenshot.
+    _group_name : str
+        The name of the group to display in the screenshot.
+    _component_name : str
+        The name of the result component to display on the screenshot.
+    _camera_name : str
+        The name of the camera to apply for the screenshot.
+
+    Methods
+    -------
+    need_change_result(other) -> bool
+        Determines whether a change in displayed result is required for the screenshot. 
+    __repr__()
+        Provides a string representation of the screenshot object.
+    """
     _file_name: str
     _annotation_text: str
     _template_name: str
@@ -28,6 +52,20 @@ class ScreenShot(PostInput):
     _camera_name: str
 
     def need_change_result(self, other) -> bool:
+        """
+        Checks if the 2 screenshots can be genereated without changing the displayed result.
+        If the displayed result does not need to be changed, the generation of screenshots is faster.
+
+        Parameters
+        ----------
+        other : ScreenShot
+            Another instance of the ScreenShot class to compare against.
+
+        Returns
+        -------
+        bool
+            True if both screenshot definitions require a change in displayed result, False otherwise.
+        """
         if (self._solution != other._solution):
             return True
 
@@ -47,16 +85,71 @@ class ScreenShot(PostInput):
 
 
     def __repr__(self):
+        """
+        Provides a string representation of the ScreenShot object.
+
+        Returns
+        -------
+        str
+            A string describing the ScreenShot object with its attributes.
+        """
         return f"ScreenShot(file_name='{self._file_name}', annotation_text={self._annotation_text}, " \
                f"template_name={self._template_name}, group_name='{self._group_name}', " \
                f"component_name='{self._component_name}', camera_name='{self._camera_name}')"
 
 
 def sort_screenshots(screenshots: List[ScreenShot]) -> List[ScreenShot]:
+    """
+    Sorts a list of ScreenShot objects in order to minimize changes in displayed result, for performance reasons.
+
+    The sorting order is determined by the attributes `_solution`, `_subcase`,
+    `_iteration`, and `_resultType`, in that sequence.
+
+    Parameters
+    ----------
+    screenshots : List[ScreenShot]
+        A list of ScreenShot objects to be sorted.
+
+    Returns
+    -------
+    List[ScreenShot]
+        The sorted list of ScreenShot objects.
+    """
     return sorted(screenshots, key=lambda x: (x._solution, x._subcase, x._iteration, x._resultType))
 
 
 def check_screenshots(screenshots: List[ScreenShot], sim_part: NXOpen.CAE.SimPart=None) -> None:
+    """
+    Validates a list of ScreenShot objects against an NX SimPart environment.
+
+    This function ensures that each `ScreenShot` object refers to valid entities
+    (groups, templates, components, and cameras) within the specified NX simulation part.
+    If `sim_part` is not provided, it defaults to the currently active `.sim` file in the session.
+
+    Parameters
+    ----------
+    screenshots : List[ScreenShot]
+        A list of ScreenShot objects to validate.
+    sim_part : NXOpen.CAE.SimPart, optional
+        The simulation part (`.sim` file) to validate against. If not provided,
+        the currently active `.sim` file in the session is used.
+
+    Raises
+    ------
+    ValueError
+        If `sim_part` is not a valid `.sim` file or if any of the following conditions are not met:
+        - The specified group name does not exist or has multiple matches.
+        - The template name cannot be found.
+        - The component name is invalid or does not exist.
+        - The camera name does not exist or has multiple matches.
+
+    Notes
+    -----
+    - This function is tailored for non-developers, prioritizing simple and clear error messages over full stack traces.
+    - Reloads templates before validation to ensure the latest changes are accounted for.
+    - Provides detailed feedback in the log window (`the_lw`) for errors and warnings.
+    - Testd in SC2312
+    """
     if sim_part is None:
         if not isinstance(the_session.Parts.BaseWork, NXOpen.CAE.SimPart):
             raise ValueError("check_screenshots needs to be called on a .sim file!")
@@ -118,6 +211,40 @@ def check_screenshots(screenshots: List[ScreenShot], sim_part: NXOpen.CAE.SimPar
 
 
 def read_screenshot_definitions(file_path: str) -> List[ScreenShot]:
+    """
+    Reads screenshot definitions from a CSV file and returns a list of `ScreenShot` objects.
+
+    Each line in the file should represent a screenshot definition, with attributes
+    separated by commas. The function validates the file content, ensures the correct
+    number of attributes, and parses each line into a `ScreenShot` object.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the CSV file containing screenshot definitions.
+
+    Returns
+    -------
+    List[ScreenShot]
+        A list of `ScreenShot` objects created from the file content.
+    
+    Raises
+    ------
+    FileNotFoundError
+        If the specified file does not exist.
+    ValueError
+        If a line in the file does not contain exactly 10 attributes or has invalid data.
+    Exception
+        If an error occurs during file reading or parsing.
+
+    Notes
+    -----
+    - Each line in the input file must have exactly 10 comma-separated values:
+      `[file_name, annotation_text, template_name, group_name, camera_name, solution, subcase, iteration, resultType, component_name]`.
+    - The `subcase` and `iteration` fields are expected to be integers.
+    - Commas in names are not allowed to avoid parsing errors.
+    - Tested in SC2312
+    """
     if (not os.path.exists(file_path)):
         the_lw.WriteFullline("Error: could not find " + file_path)
     
@@ -158,6 +285,41 @@ def read_screenshot_definitions(file_path: str) -> List[ScreenShot]:
 
 
 def display_result(post_input: PostInput, solution_result: NXOpen.CAE.SolutionResult, component_name: str) -> int:
+    """
+    Displays a specific result in the NX post-processing environment.
+
+    This function sets the result type and component for a postview using the provided
+    `PostInput`, `SolutionResult`, and component name. It then creates a postview and
+    returns its ID so the user gets a handle for later use.
+
+    Parameters
+    ----------
+    post_input : PostInput
+        The input object containing metadata about the post-processing operation.
+    solution_result : NXOpen.CAE.SolutionResult
+        The result object associated with the solution to be visualized.
+    component_name : str
+        The name of the component to be displayed. This name must match an attribute
+        in `NXOpen.CAE.Result.Component` exactly (case-sensitive).
+
+    Returns
+    -------
+    int
+        The postview ID created for the displayed result.
+
+    Raises
+    ------
+    AttributeError
+        If `component_name` does not match any valid attribute in `NXOpen.CAE.Result.Component`.
+    ValueError
+        If the result type cannot be determined or the postview creation fails.
+
+    Notes
+    -----
+    - The `component_name` must be validated beforehand to ensure it matches a valid
+      component in the NX environment.
+    - Tested in SC2312
+    """
     # Only set the result and the component, the rest is through the template.
     result_type: NXOpen.CAE.ResultType = get_result_types([post_input], [solution_result])[0]
     # Get the component object from the string componentName
@@ -172,11 +334,73 @@ def display_result(post_input: PostInput, solution_result: NXOpen.CAE.SolutionRe
 
 
 def set_post_template(postview_id: int, template_name: str) -> None:
+    """
+    Sets a post-processing template for a given postview.
+
+    This function applies a specific post-processing template to a postview by searching for
+    the template by name and associating it with the provided postview ID.
+
+    Parameters
+    ----------
+    postview_id : int
+        The ID of the postview to which the template will be applied.
+    template_name : str
+        The name of the template to be applied.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    ValueError
+        If the specified template name cannot be found.
+
+    Notes
+    -----
+    - The template name must exist in the session's template library. If not, the function
+    will raise an error during the template search operation.
+    - Templates define specific visual settings and layouts for the results in the NX environment.
+    - Tested in SC2312
+    """
     template_id: int = the_session.Post.TemplateSearch(template_name)
     the_session.Post.PostviewApplyTemplate(postview_id, template_id)
 
 
 def change_component(postview_id: int, component_name: str) -> None:
+    """
+    Changes the result component for a given postview.
+
+    This function updates the component displayed in a specific postview by modifying the 
+    result parameters associated with it. The postview is then updated to reflect the changes.
+
+    Parameters
+    ----------
+    postview_id : int
+        The ID of the postview to be modified.
+    component_name : str
+        The name of the component to display. This must match an attribute in 
+        `NXOpen.CAE.Result.Component` exactly (case-sensitive).
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    AttributeError
+        If `component_name` does not match any valid attribute in `NXOpen.CAE.Result.Component`.
+    ValueError
+        If the postview ID is invalid or the result parameters cannot be updated.
+
+    Notes
+    -----
+    - The `component_name` must correspond to a valid component in the NX environment.
+    - The function fetches the current result and parameters for the specified postview, modifies
+    the component, and updates the postview accordingly.
+    - Tested in SC2312
+    """
+
     component: NXOpen.CAE.Result.Component = getattr(NXOpen.CAE.Result.Component, component_name)
     result: NXOpen.CAE.Result
     result_parameters: NXOpen.CAE.ResultParameters
@@ -187,6 +411,44 @@ def change_component(postview_id: int, component_name: str) -> None:
 
 
 def display_elements_in_group_via_postgroup(postview_id: int, group_name: str, sim_part: NXOpen.CAE.SimPart=None) -> None:
+    """
+    Displays elements in a specified group by creating a postgroup on the fly.
+
+    This function leverages NX post-processing to display only the elements in a specified group
+    within a given postview. It creates a "PostGroup" based on the element labels in the group
+    from the simulation file and applies it to the postview.
+
+    Parameters
+    ----------
+    postview_id : int
+        The ID of the postview where the elements will be displayed.
+    group_name : str
+        The name of the group containing the elements to be displayed.
+    sim_part : NXOpen.CAE.SimPart, optional
+        The simulation part containing the group. If not provided, the currently active 
+        `.sim` file in the session is used.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    ValueError
+        If the function is not called on a `.sim` file or if the specified group cannot be found.
+    NXOpen.Exceptions.NXException
+        If any operation in the NX session fails (e.g., creating postgroups or applying visibility).
+
+    Notes
+    -----
+    - NX automatically creates "PostGroups" for groups in the simulation file, but only if the groups 
+    contain nodes or elements. This function handles cases where a direct mapping between simulation 
+    groups and postgroups is not straightforward.
+    - Due to a known bug in NX, `CreateUserGroupFromEntityLabels` only accepts a single label for elements.
+    This implementation compensates by adding an extra placeholder label to avoid missing elements.
+    - Historical code. Replaced with copy_groups_to_sim_part and display_elements_in_group_using_workaround.
+    """
+
     # NX creates it's own postgroups from the groups in the sim.
     # It only creates a postgroup if either nodes or elements are present in the group.
     # Therefore it's hard to relate the postgroup labels to the group labels in the simfile...
@@ -215,6 +477,41 @@ def display_elements_in_group_via_postgroup(postview_id: int, group_name: str, s
 
 
 def display_elements_in_group(postview_id: int, group_name: str) -> None:
+    """
+    Displays elements in a specified group within a postview.
+
+    This function checks for the presence of a specified group in the simulation file and attempts 
+    to display its elements in the provided postview. A workaround is applied for certain NX versions 
+    due to known API limitations regarding group visibility.
+
+    Parameters
+    ----------
+    postview_id : int
+        The ID of the postview where the group elements will be displayed.
+    group_name : str
+        The name of the group whose elements are to be displayed.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    ValueError
+        If the specified group cannot be found in the simulation file or if a bug in the NX API
+        prevents the group from being displayed.
+
+    Notes
+    -----
+    - If the NX version is v12, a known bug in the NX API prevents groups from being displayed if 
+    they are not defined in the simulation file. A workaround is suggested, which involves creating 
+    the same group directly in the simulation file.
+    - The function checks for user groups associated with the postview. If the group is not found, it raises 
+    an error and suggests a workaround to create the group in the simulation file.
+    - If the group is found, the function applies the visibility settings to display only the elements of 
+    that group in the postview.
+    - Historical code. Replaced with copy_groups_to_sim_part and display_elements_in_group_using_workaround.
+    """
     nx_version: str = the_session.GetEnvironmentVariableValue("UGII_VERSION") # theSession.BuildNumber only available from version 1926 onwards
     if nx_version == "v12":
         the_lw.WriteFullline("Error: Due to a bug in the NX API, the group " + group_name + " cannot be displayed, because it has not been defined in the sim file.")
@@ -228,7 +525,7 @@ def display_elements_in_group(postview_id: int, group_name: str) -> None:
         usergroups_gids = the_session.Post.PostviewGetUserGroupGids(postview_id, [group_name]) # type: ignore single string according docs
         if len(usergroups_gids) == 0:
             the_lw.WriteFullline("Error: Due to a bug in the NX API, the group " + group_name + " cannot be displayed, because it has not been defined in the sim file.")
-            the_lw.WriteFullline("A workaround is to create the same group in the sim file and use that in the journal.")
+            the_lw.WriteFullline("A workaround is to create the same group in the sim file. The function copy_groups_to_sim_part can be used for this.")
             # display_elements_in_group_via_postgroup(postview_id, group_name)
             raise ValueError("Group " + group_name + " not found in the sim file.")
         else:
@@ -236,6 +533,38 @@ def display_elements_in_group(postview_id: int, group_name: str) -> None:
 
 
 def display_elements_in_group_using_workaround(postview_id: int, group_name: str) -> None:
+    """
+    Displays elements in a specified group. If the groups is not found, a check is performed
+    to see if a temporary group with suffix "_screenshot_generator_temp" exists. If it does,
+    the elements in that group are displayed.
+    This is because in some versions of NX (e.g., NX 12), only groups in the .sim file can be displayed
+    using 'PostviewApplyUserGroupVisibility'
+
+    Parameters
+    ----------
+    postview_id : int
+        The ID of the postview where the group elements will be displayed.
+    group_name : str
+        The name of the group whose elements are to be displayed.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    ValueError
+        If neither the specified group nor its workaround (temporary group) can be found in the simulation file.
+
+    Notes
+    -----
+    - The function first attempts to fetch the user group by the given `group_name`. If it is not found,
+    it tries to use a temporary group created earlier (with the suffix "_screenshot_generator_temp").
+    - If neither group is found, an error is raised.
+    - This function is intended to handle cases where groups are not directly available or compatible due to 
+    limitations in certain versions of NX (e.g., NX 12).
+    - Tested in SC2312
+    """
     # this should also work for NX12 (not tested)
     usergroups_gids = the_session.Post.PostviewGetUserGroupGids(postview_id, [group_name]) # type: ignore single string according docs
     if len(usergroups_gids) == 0:
@@ -252,6 +581,44 @@ def display_elements_in_group_using_workaround(postview_id: int, group_name: str
 
 
 def map_group_to_postgroup(postview_id: int, sim_part: NXOpen.CAE.SimPart=None) -> Dict[str, int]:
+    """
+    Maps simulation groups to postgroups in a postview.
+
+    This function attempts to map simulation groups (from the .sim file) to postgroups in a postview. It considers
+    groups that contain nodes or elements and attempts to find the corresponding postgroup IDs. A workaround is 
+    applied for earlier versions of NX (eg. NX12 and earlier) where postgroup numbering may be dependent on the number of postviews already 
+    created. The function does not currently return a mapping but sets up the postgroup visibility for the given postview.
+
+    Parameters
+    ----------
+    postview_id : int
+        The ID of the postview where the postgroup visibility will be applied.
+    sim_part : NXOpen.CAE.SimPart, optional
+        The simulation part containing the groups. If not provided, the currently active `.sim` file in the session is used.
+
+    Returns
+    -------
+    Dict[str, int]
+        A dictionary mapping the group names to their respective postgroup IDs. This is a placeholder for future functionality.
+
+    Raises
+    ------
+    ValueError
+        If the function is called on a non-simulation file or if the simulation part cannot be accessed.
+    NXOpen.Exceptions.NXException
+        If the postgroup visibility update or mapping fails due to issues in the NX session.
+
+    Notes
+    -----
+    - This function is not yet fully functional for mapping group names to postgroup IDs. The part that performs
+    the actual mapping is still to be implemented.
+    - The `PostviewApplyUserGroupVisibility` method is used to attempt to identify valid postgroup IDs, and the 
+    last valid postgroup number is determined by incrementing and then decrementing a counter.
+    - NX versions such as NX12 may have different behavior for postgroup numbering based on the session's history of postviews.
+    - The function attempts to handle groups that have either nodes or elements, and works with groups created in the 
+    simulation part.
+    """
+
     # this function is just for future reference, as it is not used in the journal
     # the numbering of the postgroups is not the same as the numbering of the groups in the sim file
     # and also depends on the number of postviews already created
@@ -276,10 +643,12 @@ def map_group_to_postgroup(postview_id: int, sim_part: NXOpen.CAE.SimPart=None) 
                 all_groups_with_nodes_or_elements.append(group)
                 flag = True
     
-    # per for a try catch from a high number down, untill the PostviewApplyUserGroupVisibility does not throw an error
+    # perform a try catch from a high number down, untill the PostviewApplyUserGroupVisibility does not throw an error
     # this is the last postgroup number.
     usergroup_ids = [None] * 1
-    counter: int = len(all_groups) + 100 # cannot be longer than the actual number of groups, but 
+    # in certain NX versions the postgroup number is dependent on the number of postviews already created (Eg NX12).
+    # this approach can fail if the postgroup numbering has increased by more than 100 due to the creation of postviews.
+    counter: int = len(all_groups) + 100 
     while True:
         usergroup_ids[0] = counter
         try:
@@ -293,6 +662,42 @@ def map_group_to_postgroup(postview_id: int, sim_part: NXOpen.CAE.SimPart=None) 
       
 
 def create_annotation(postview_id: int, annotation_text: str, sim_part: NXOpen.CAE.SimPart=None) -> NXOpen.CAE.PostAnnotation:
+    """
+    Creates a user-defined annotation in a postview.
+
+    This function allows the creation of an annotation in a postview within a simulation part. It sets the name, 
+    type, and location of the annotation, and applies various visual properties such as the background box and color.
+
+    Parameters
+    ----------
+    postview_id : int
+        The ID of the postview where the annotation will be created.
+    annotation_text : str
+        The text to be displayed in the annotation.
+    sim_part : NXOpen.CAE.SimPart, optional
+        The simulation part in which the annotation will be created. If not provided, the function uses the 
+        currently active simulation part in the session.
+
+    Returns
+    -------
+    NXOpen.CAE.PostAnnotation
+        The created annotation object.
+
+    Raises
+    ------
+    ValueError
+        If the function is called outside of a valid `.sim` file.
+    NXOpen.Exceptions.NXException
+        If there are issues creating or drawing the annotation in the session.
+
+    Notes
+    -----
+    - The annotation is created with a default name "AnnotationName" and placed at a fixed coordinate (0.5, 0.05).
+    - The background box for the annotation is drawn with a translucent fill color, and the box's color is set 
+    based on the simulation part's color palette (using index 0).
+    - Tested in SC2312
+    """
+
     if sim_part is None:
         if not isinstance(the_session.Parts.BaseWork, NXOpen.CAE.SimPart):
             raise ValueError("create_annotation needs to be called on a .sim file!")
@@ -318,10 +723,39 @@ def create_annotation(postview_id: int, annotation_text: str, sim_part: NXOpen.C
 
 
 def set_camera(camera_name: str, base_part: NXOpen.BasePart=None) -> None:
-    
+    """
+    Sets the camera view for the specified base part.
+
+    This function applies a camera view to the work view of a given (sim) part or the currently active simulation part. 
+    It locates the camera by name and then applies it to the part's work view, updating the view accordingly.
+
+    Parameters
+    ----------
+    camera_name : str
+        The name of the camera to be applied to the work view.
+    base_part : NXOpen.BasePart, optional
+        The base part in which the camera view will be applied. If not provided, the function uses the 
+        currently active base part in the session.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    ValueError
+        If no camera with the specified name exists in the part.
+
+    Notes
+    -----
+    - The function searches for the camera by name in the part's camera collection and applies the camera to the
+    active work view.
+    - The camera's name comparison is case-insensitive.
+    - Tested in SC2312
+    """
     # technically set_camera should be able to be called on a BasePart
     if base_part is None:
-        base_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, the_session.Parts.BaseWork)
+        base_part: NXOpen.BasePart = the_session.Parts.BaseWork
     cameras: NXOpen.Display.CameraCollection = base_part.Cameras
     camera: NXOpen.Display.Camera = [x for x in cameras if x.Name.lower() == camera_name.lower()][0]
     camera.ApplyToView(base_part.ModelingViews.WorkView)
@@ -393,7 +827,7 @@ def print_message() -> None:
     the_lw.WriteFullline("                             brought to you by theScriptingEngineer                               ")
     the_lw.WriteFullline("                                   www.theScriptingEngineer.com                                   ")
     the_lw.WriteFullline("                                  More journals can be found at:                                  ")
-    the_lw.WriteFullline("                        https:#github.com/theScriptingEngineer/nxopentse                        ")
+    the_lw.WriteFullline("                        https://github.com/theScriptingEngineer/nxopentse                        ")
     the_lw.WriteFullline("##################################################################################################")
     the_lw.WriteFullline("##################################################################################################")
     the_lw.WriteFullline("##################################################################################################")

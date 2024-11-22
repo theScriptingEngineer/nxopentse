@@ -5,6 +5,7 @@ from typing import List, Optional, cast
 import NXOpen
 import NXOpen.Features
 import NXOpen.GeometricUtilities
+import NXOpen.Assemblies
 
 the_session: NXOpen.Session = NXOpen.Session.GetSession()
 the_lw: NXOpen.ListingWindow = the_session.ListingWindow
@@ -18,7 +19,7 @@ def nx_hello():
     the_lw.WriteFullline("Hello from " + os.path.basename(__file__))
 
 
-def get_all_bodies(work_part: NXOpen.Part=None) -> List[NXOpen.Body]:
+def get_all_bodies_in_part(work_part: NXOpen.Part=None) -> List[NXOpen.Body]:
     """
     Get all the bodies in the work part.
 
@@ -38,10 +39,99 @@ def get_all_bodies(work_part: NXOpen.Part=None) -> List[NXOpen.Body]:
     """
     if work_part is None:
         work_part = the_session.Parts.Work
-    all_bodies: List[NXOpen.Body] = []
-    for item in work_part.Bodies: # type: ignore
-        all_bodies.append(item)
+    all_bodies: List[NXOpen.Body] = [item for item in work_part.Bodies] # type: ignore
     return all_bodies
+
+
+def get_all_bodies_in_component(component: NXOpen.Assemblies.Component) -> List[NXOpen.Body]:
+    """
+    Get all the bodies in the given component. (thus not the part)
+
+    Parameters
+    ----------
+    component : NXOpen.Assemblies.Component
+        The component for which to get all bodies.
+    
+    Returns
+    -------
+    List[NXOpen.Body]
+        A list of all the bodies in the component.
+
+    NOTES
+    -----
+    The bodies in the component are not the same as the bodies in the part. As a part be be used multiple times in an assembly.
+    Tested in Simcenter 2312
+    """
+    if component is None:
+        return []
+    all_bodies_in_part: List[NXOpen.Body] = [body for body in component.Prototype.Bodies]
+    all_bodies_in_component: List[NXOpen.Body] = [component.FindOccurrence(body) for body in all_bodies_in_part]
+    if all_bodies_in_component is None or all_bodies_in_component == [None] * len(all_bodies_in_component):
+        # the component doesn't contain any bodies, so we return an empty list
+        # this happens for example also when the 'reference set' is set to 'MODEL'
+        return []
+    return all_bodies_in_component
+
+
+def get_all_curves_in_component(component: NXOpen.Assemblies.Component) -> List[NXOpen.Curve]:
+    """
+    Get all the curves in the given component. (thus not the part)
+
+    Parameters
+    ----------
+    component : NXOpen.Assemblies.Component
+        The component for which to get all curves.
+    
+    Returns
+    -------
+    List[NXOpen.Curve]
+        A list of all the curves in the component.
+
+    NOTES
+    -----
+    The curves in the component are not the same as the curves in the part. As a part be be used multiple times in an assembly.
+    Tested in Simcenter 2312
+    """
+    if component is None:
+        return []
+    all_curves_in_part: List[NXOpen.Curve] = [curve for curve in component.Prototype.Curves]
+    the_lw.WriteFullline(f'Found {len(all_curves_in_part)} curves in component {component.JournalIdentifier}')
+    all_curves_in_component: List[NXOpen.Curve] = [component.FindOccurrence(curve) for curve in all_curves_in_part]
+    if all_curves_in_component is None or all_curves_in_component == [None] * len(all_curves_in_part):
+        # the component doesn't contain any curves, so we return an empty list
+        # this happens for example also when the reference set is set to 'MODEL'
+        return []
+    return all_curves_in_component
+
+
+def get_all_points_in_component(component: NXOpen.Assemblies.Component) -> List[NXOpen.Point]:
+    """
+    Get all the points in the given component. (thus not the part)
+
+    Parameters
+    ----------
+    component : NXOpen.Assemblies.Component
+        The component for which to get all points.
+    
+    Returns
+    -------
+    List[NXOpen.Point]
+        A list of all the points in the component.
+
+    NOTES
+    -----
+    The points in the component are not the same as the points in the part. As a part be be used multiple times in an assembly.
+    Tested in Simcenter 2312
+    """
+    if component is None:
+        return []
+    all_points_in_part: List[NXOpen.Point] = [point for point in component.Prototype.Points]
+    all_points_in_component: List[NXOpen.Point] = [component.FindOccurrence(point) for point in all_points_in_part]
+    if all_points_in_component is None or all_points_in_component == [None] * len(all_points_in_component):
+        # the component doesn't contain any points, so we return an empty list
+        # this happens for example also when the 'reference set' is set to 'MODEL'
+        return []
+    return all_points_in_component
 
 
 def get_faces_of_type(body: NXOpen.Body, face_type: NXOpen.Face.FaceType) -> List[NXOpen.Face]:
@@ -568,3 +658,86 @@ def get_named_datum_planes(cad_part: NXOpen.Part) -> List[NXOpen.DatumPlane]:
     
     return named_datum_planes
 
+
+def CreateBoundingBox(workPart: NXOpen.Part, bodies: List[NXOpen.Body], sheet_bodies: bool=False) -> NXOpen.Features.ToolingBox:
+    '''
+    Create a bounding box around the given bodies.
+    For sheet bodies, 1mm is added to the box size in all directions, positive and negative. Thus the box size needs to be subtracted by 2mm to get the correct size.
+
+    Parameters
+    ----------
+    workPart : NXOpen.Part
+        The part in which to create the bounding box.
+    bodies : List[NXOpen.Body]
+        The bodies for which to create the bounding box.
+    sheet_bodies : bool, optional
+        If the bodies are sheet bodies. Defaults to False.
+    
+    Returns
+    -------
+    NXOpen.Features.ToolingBox
+        The created bounding box feature.
+
+    NOTES
+    -----
+    For sheet bodies, 1mm is added to the box size in all directions, positive and negative. Thus the box size needs to be subtracted by 2mm to get the correct size.
+    Tested in Simcenter 2312
+    '''
+    # Initialize the ToolingBoxBuilder.
+    toolingBoxBuilder: NXOpen.Features.ToolingBoxBuilder = workPart.Features.ToolingFeatureCollection.CreateToolingBoxBuilder(None)
+    toolingBoxBuilder.Type = NXOpen.Features.ToolingBoxBuilder.Types.BoundedBlock
+    toolingBoxBuilder.NonAlignedMinimumBox = True
+    if sheet_bodies:
+        toolingBoxBuilder.XValue.SetFormula("10")
+        toolingBoxBuilder.YValue.SetFormula("10")
+        toolingBoxBuilder.ZValue.SetFormula("10")
+        toolingBoxBuilder.OffsetPositiveX.SetFormula("1")
+        toolingBoxBuilder.OffsetNegativeX.SetFormula("1")
+        toolingBoxBuilder.OffsetPositiveY.SetFormula("1")
+        toolingBoxBuilder.OffsetNegativeY.SetFormula("1")
+        toolingBoxBuilder.OffsetPositiveZ.SetFormula("1")
+        toolingBoxBuilder.OffsetNegativeZ.SetFormula("1")
+
+    # Minimum required inputs for a bounding box
+    matrix = NXOpen.Matrix3x3()
+    matrix.Xx = 1.0
+    matrix.Xy = 0.0
+    matrix.Xz = 0.0
+    matrix.Yx = 0.0
+    matrix.Yy = 1.0
+    matrix.Yz = 0.0
+    matrix.Zx = 0.0
+    matrix.Zy = 0.0
+    matrix.Zz = 1.0
+    position = NXOpen.Point3d(0.0, 0.0, 0.0)
+    toolingBoxBuilder.SetBoxMatrixAndPosition(matrix, position)
+
+    # Create a list of SelectionIntentRule objects and add bodies one by one
+    listRules = []
+    for body in bodies:
+        tempBodies = [body]
+        selectionIntentRuleOptions = workPart.ScRuleFactory.CreateRuleOptions()
+        selectionIntentRuleOptions.SetSelectedFromInactive(False)
+        bodyDumbRule = workPart.ScRuleFactory.CreateRuleBodyDumb(tempBodies)
+        selectionIntentRuleOptions.Dispose()
+
+        listRules.append(bodyDumbRule)
+
+        scCollector = toolingBoxBuilder.BoundedObject
+        scCollector.ReplaceRules(listRules, False)
+
+        deselections1 = []
+        toolingBoxBuilder.SetSelectedOccurrences(tempBodies, deselections1)
+
+        # Ensure no internal errors when saving
+        selectNXObjectList = toolingBoxBuilder.FacetBodies
+        empty = []
+        selectNXObjectList.Add(empty)
+
+        toolingBoxBuilder.CalculateBoxSize()
+
+    boundingBox = toolingBoxBuilder.Commit()
+    boundingBox.SetName("Minimum_Box")
+    toolingBoxBuilder.Destroy()
+
+    return boundingBox
