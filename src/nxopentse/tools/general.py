@@ -91,6 +91,9 @@ def print_component_tree(component: NXOpen.Assemblies.Component, requested_level
     -----
     Tested in SC2306
     """
+    if component is None:
+        # in case we call print_component_tree on a part witout components
+        return
     level: int = requested_level
     the_lw.WriteFullline(indentation(level) + "| " + component.JournalIdentifier + " is a compont(instance) of " + component.Prototype.OwningPart.Name + " located in " + component.OwningPart.Name)
     children: List[NXOpen.Assemblies.Component] = component.GetChildren()
