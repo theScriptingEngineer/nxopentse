@@ -1275,3 +1275,580 @@ def copy_groups_to_sim_part(sim_part: NXOpen.CAE.SimPart=None, groups_in_screens
             copied_groups.append(group)
     
     return copied_groups
+
+
+def create_force_on_group(group_name: str, fx: float, fy: float, fz: float, force_name: str, group_filter_type: NXOpen.CAE.CaeSetGroupFilterType.GeomEdge) -> NXOpen.CAE.SimBC:
+    """This function creates a force on a node.
+    
+    Parameters
+    ----------
+    group_name: str
+        The name of the group to apply the force to.
+    fx: float
+        the force in global x-direction in Newton.
+    fy: float
+        the force in global y-direction in Newton.
+    fz: float
+        the force in global z-direction in Newton.
+    force_name: str
+        The name of the force for the GUI.
+    group_filter_type: NXOpen.CAE.CaeSetGroupFilterType
+        The object type the filter from the group.
+
+    Returns
+    -------
+    NXOpen.CAE.SimBC
+        Returns the created force.
+
+    Notes
+    -----
+    Tested in SC2312
+    """
+    base_part: NXOpen.BasePart = the_session.Parts.BaseWork
+    # check if started from a SimPart, returning othwerwise
+    if not isinstance(base_part, NXOpen.CAE.SimPart):
+        the_lw.WriteFullline("CreateNodalForce needs to start from a .sim file. Exiting")
+        return
+    # we are now sure that basePart is a SimPart
+    sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, base_part) # explicit casting makes it clear
+    
+    sim_simulation: NXOpen.CAE.SimSimulation = sim_part.Simulation
+    # make the active solution inactive, so load is not automatically added to active subcase
+    sim_simulation.ActiveSolution = NXOpen.CAE.SimSolution.Null
+
+    # check if a nodal force with that name already exists. If it does, update, if not create it
+    sim_loads: List[NXOpen.CAE.SimLoad] = sim_part.Simulation.Loads
+    sim_load: NXOpen.CAE.SimLoad = [item for item in sim_loads if item.Name.lower() == force_name.lower()]
+    if len(sim_load) == 0:
+        # load not found
+        sim_bc_builder: NXOpen.CAE.SimBCBuilder = sim_simulation.CreateBcBuilderForLoadDescriptor("ComponentForceField", force_name, 0) # overloaded function is unknow to intellisense
+    else:
+        sim_bc_builder: NXOpen.CAE.SimBCBuilder = sim_simulation.CreateBcBuilderForBc(sim_load[0])
+        the_lw.WriteFullline(f"A force with the name {force_name} already exists, therefore updating the force.")
+    
+    # get the group
+    groups: List[NXOpen.CAE.CaeGroup] = [item for item in sim_part.CaeGroups if item.Name.lower() == group_name.lower()]
+    if len(groups) == 0:
+        the_lw.WriteFullline(f"Group {group_name} not found. Exiting")
+        return
+    elif len(groups) > 1:
+        the_lw.WriteFullline(f"Multiple groups with the name {group_name} found. Exiting")
+        return
+    else:
+        group: NXOpen.CAE.CaeGroup = groups[0]
+
+    # define the force
+    property_table: NXOpen.CAE.PropertyTable = sim_bc_builder.PropertyTable
+    set_manager: NXOpen.CAE.SetManager = sim_bc_builder.TargetSetManager
+    set_manager.SetTargetSetGroup(0, group_filter_type, group)
+    
+    unit1: NXOpen.Unit = sim_part.UnitCollection.FindObject("Newton")
+    expression1: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(fx), unit1)
+    expression2: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(fy), unit1)
+    expression3: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(fz), unit1)
+
+    field_manager: NXOpen.Fields.FieldManager = cast(NXOpen.Fields.FieldManager, sim_part.FindObject("FieldManager"))
+    expressions: List[NXOpen.Expression] = [NXOpen.Expression.Null] * 3 
+    expressions[0] = expression1
+    expressions[1] = expression2
+    expressions[2] = expression3
+    vector_field_wrapper: NXOpen.Fields.VectorFieldWrapper = field_manager.CreateVectorFieldWrapperWithExpressions(expressions)
+    
+    property_table.SetVectorFieldWrapperPropertyValue("CartesianMagnitude", vector_field_wrapper)
+    
+    sim_bc: NXOpen.CAE.SimBC = sim_bc_builder.CommitAddBc()
+    
+    sim_bc_builder.Destroy()
+
+    return sim_bc
+
+
+def create_force_on_selection_recipe(selection_recipe_name: str, fx: float, fy: float, fz: float, force_name: str, selection_recipe_filter_type: NXOpen.CAE.CaeSetGroupFilterType.GeomEdge) -> NXOpen.CAE.SimBC:
+    """This function creates a force on a node.
+    
+    Parameters
+    ----------
+    selection_recipe_name: str
+        The name of the selection recipe to apply the force to.
+    fx: float
+        the force in global x-direction in Newton.
+    fy: float
+        the force in global y-direction in Newton.
+    fz: float
+        the force in global z-direction in Newton.
+    force_name: str
+        The name of the force for the GUI.
+    group_filter_type: NXOpen.CAE.CaeSetGroupFilterType
+        The object type the filter from the group.
+
+    Returns
+    -------
+    NXOpen.CAE.SimBC
+        Returns the created force.
+
+    Notes
+    -----
+    Tested in SC2312
+    """
+    base_part: NXOpen.BasePart = the_session.Parts.BaseWork
+    # check if started from a SimPart, returning othwerwise
+    if not isinstance(base_part, NXOpen.CAE.SimPart):
+        the_lw.WriteFullline("CreateNodalForce needs to start from a .sim file. Exiting")
+        return
+    # we are now sure that basePart is a SimPart
+    sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, base_part) # explicit casting makes it clear
+    
+    sim_simulation: NXOpen.CAE.SimSimulation = sim_part.Simulation
+    # make the active solution inactive, so load is not automatically added to active subcase
+    sim_simulation.ActiveSolution = NXOpen.CAE.SimSolution.Null
+
+    # check if a nodal force with that name already exists. If it does, update, if not create it
+    sim_loads: List[NXOpen.CAE.SimLoad] = sim_part.Simulation.Loads
+    sim_load: NXOpen.CAE.SimLoad = [item for item in sim_loads if item.Name.lower() == force_name.lower()]
+    if len(sim_load) == 0:
+        # load not found
+        sim_bc_builder: NXOpen.CAE.SimBCBuilder = sim_simulation.CreateBcBuilderForLoadDescriptor("ComponentForceField", force_name, 0) # overloaded function is unknow to intellisense
+    else:
+        sim_bc_builder: NXOpen.CAE.SimBCBuilder = sim_simulation.CreateBcBuilderForBc(sim_load[0])
+        the_lw.WriteFullline(f"A force with the name {force_name} already exists, therefore updating the force.")
+    
+    # get the group
+    selection_recipes: List[NXOpen.CAE.SelectionRecipe] = [item for item in sim_part.SelectionRecipes if item.Name.lower() == selection_recipe_name.lower()]
+    if len(selection_recipes) == 0:
+        the_lw.WriteFullline(f"Group {selection_recipe_name} not found. Exiting")
+        return
+    elif len(selection_recipes) > 1:
+        the_lw.WriteFullline(f"Multiple groups with the name {selection_recipe_name} found. Exiting")
+        return
+    else:
+        selection_recipe: NXOpen.CAE.SelectionRecipe = selection_recipes[0]
+    
+    objects = [None] * 1
+    objects[0] = NXOpen.CAE.SetObject()
+    objects[0].Obj = selection_recipe
+    objects[0].SubType = NXOpen.CAE.CaeSetObjectSubType.SelRecipe
+    objects[0].SubId = 0
+
+    # define the force
+    property_table: NXOpen.CAE.PropertyTable = sim_bc_builder.PropertyTable
+    set_manager: NXOpen.CAE.SetManager = sim_bc_builder.TargetSetManager
+    set_manager.SetTargetSetMembers(0, selection_recipe_filter_type, objects)
+    
+    unit1: NXOpen.Unit = sim_part.UnitCollection.FindObject("Newton")
+    expression1: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(fx), unit1)
+    expression2: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(fy), unit1)
+    expression3: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(fz), unit1)
+
+    field_manager: NXOpen.Fields.FieldManager = cast(NXOpen.Fields.FieldManager, sim_part.FindObject("FieldManager"))
+    expressions: List[NXOpen.Expression] = [NXOpen.Expression.Null] * 3 
+    expressions[0] = expression1
+    expressions[1] = expression2
+    expressions[2] = expression3
+    vector_field_wrapper: NXOpen.Fields.VectorFieldWrapper = field_manager.CreateVectorFieldWrapperWithExpressions(expressions)
+    
+    property_table.SetVectorFieldWrapperPropertyValue("CartesianMagnitude", vector_field_wrapper)
+    
+    sim_bc: NXOpen.CAE.SimBC = sim_bc_builder.CommitAddBc()
+    
+    sim_bc_builder.Destroy()
+
+    return sim_bc
+
+
+def create_moment_on_group(group_name: str, mx: float, my: float, mz: float, moment_name: str, group_filter_type: NXOpen.CAE.CaeSetGroupFilterType.GeomEdge) -> NXOpen.CAE.SimBC:
+    """This function creates a force on a node.
+    
+    Parameters
+    ----------
+    group_name: str
+        The name of the group to apply the moment to.
+    fx: float
+        the moment in global x-direction in NewtonMeter.
+    fy: float
+        the moment in global y-direction in NewtonMeter.
+    fz: float
+        the moment in global z-direction in NewtonMeter.
+    moment_name: str
+        The name of the moment for the GUI.
+    group_filter_type: NXOpen.CAE.CaeSetGroupFilterType
+        The object type the filter from the group.
+
+    Returns
+    -------
+    NXOpen.CAE.SimBC
+        Returns the created moment.
+
+    Notes
+    -----
+    Tested in SC2312
+    """
+    base_part: NXOpen.BasePart = the_session.Parts.BaseWork
+    # check if started from a SimPart, returning othwerwise
+    if not isinstance(base_part, NXOpen.CAE.SimPart):
+        the_lw.WriteFullline("CreateNodalForce needs to start from a .sim file. Exiting")
+        return
+    # we are now sure that basePart is a SimPart
+    sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, base_part) # explicit casting makes it clear
+    
+    sim_simulation: NXOpen.CAE.SimSimulation = sim_part.Simulation
+    # make the active solution inactive, so load is not automatically added to active subcase
+    sim_simulation.ActiveSolution = NXOpen.CAE.SimSolution.Null
+
+    # check if a nodal force with that name already exists. If it does, update, if not create it
+    sim_loads: List[NXOpen.CAE.SimLoad] = sim_part.Simulation.Loads
+    sim_load: NXOpen.CAE.SimLoad = [item for item in sim_loads if item.Name.lower() == moment_name.lower()]
+    if len(sim_load) == 0:
+        # load not found
+        sim_bc_builder: NXOpen.CAE.SimBCBuilder = sim_simulation.CreateBcBuilderForLoadDescriptor("ComponentMomentField", moment_name, 0) # overloaded function is unknow to intellisense
+    else:
+        sim_bc_builder: NXOpen.CAE.SimBCBuilder = sim_simulation.CreateBcBuilderForBc(sim_load[0])
+        the_lw.WriteFullline(f"A force with the name {moment_name} already exists, therefore updating the force.")
+    
+    # get the group
+    groups: List[NXOpen.CAE.CaeGroup] = [item for item in sim_part.CaeGroups if item.Name.lower() == group_name.lower()]
+    if len(groups) == 0:
+        the_lw.WriteFullline(f"Group {group_name} not found. Exiting")
+        return
+    elif len(groups) > 1:
+        the_lw.WriteFullline(f"Multiple groups with the name {group_name} found. Exiting")
+        return
+    else:
+        group: NXOpen.CAE.CaeGroup = groups[0]
+
+    # define the force
+    property_table: NXOpen.CAE.PropertyTable = sim_bc_builder.PropertyTable
+    set_manager: NXOpen.CAE.SetManager = sim_bc_builder.TargetSetManager
+    set_manager.SetTargetSetGroup(0, group_filter_type, group)
+    
+    unit1: NXOpen.Unit = sim_part.UnitCollection.FindObject("NewtonMeter")
+    expression1: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(mx), unit1)
+    expression2: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(my), unit1)
+    expression3: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(mz), unit1)
+
+    field_manager: NXOpen.Fields.FieldManager = cast(NXOpen.Fields.FieldManager, sim_part.FindObject("FieldManager"))
+    expressions: List[NXOpen.Expression] = [NXOpen.Expression.Null] * 3 
+    expressions[0] = expression1
+    expressions[1] = expression2
+    expressions[2] = expression3
+    vector_field_wrapper: NXOpen.Fields.VectorFieldWrapper = field_manager.CreateVectorFieldWrapperWithExpressions(expressions)
+    
+    property_table.SetVectorFieldWrapperPropertyValue("CartesianMagnitude", vector_field_wrapper)
+    
+    sim_bc: NXOpen.CAE.SimBC = sim_bc_builder.CommitAddBc()
+    
+    sim_bc_builder.Destroy()
+
+    return sim_bc
+
+
+def create_moment_on_selection_recipe(selection_recipe_name: str, mx: float, my: float, mz: float, moment_name: str, selection_recipe_filter_type: NXOpen.CAE.CaeSetGroupFilterType.GeomEdge) -> NXOpen.CAE.SimBC:
+    """This function creates a moment on the specified items in a selection recipe.
+    
+    Parameters
+    ----------
+    selection_recipe_name: str
+        The name of the selection recipe to apply the force to.
+    mx: float
+        the moment in global x-direction in NewtonMeter.
+    my: float
+        the moment in global y-direction in NewtonMeter.
+    mz: float
+        the moment in global z-direction in NewtonMeter.
+    moment_name: str
+        The name of the moment for the GUI.
+    group_filter_type: NXOpen.CAE.CaeSetGroupFilterType
+        The object type the filter from the group.
+
+    Returns
+    -------
+    NXOpen.CAE.SimBC
+        Returns the created moment.
+
+    Notes
+    -----
+    Untested
+    """
+    base_part: NXOpen.BasePart = the_session.Parts.BaseWork
+    # check if started from a SimPart, returning othwerwise
+    if not isinstance(base_part, NXOpen.CAE.SimPart):
+        the_lw.WriteFullline("CreateNodalForce needs to start from a .sim file. Exiting")
+        return
+    # we are now sure that basePart is a SimPart
+    sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, base_part) # explicit casting makes it clear
+    
+    sim_simulation: NXOpen.CAE.SimSimulation = sim_part.Simulation
+    # make the active solution inactive, so load is not automatically added to active subcase
+    sim_simulation.ActiveSolution = NXOpen.CAE.SimSolution.Null
+
+    # check if a nodal force with that name already exists. If it does, update, if not create it
+    sim_loads: List[NXOpen.CAE.SimLoad] = sim_part.Simulation.Loads
+    sim_load: NXOpen.CAE.SimLoad = [item for item in sim_loads if item.Name.lower() == moment_name.lower()]
+    if len(sim_load) == 0:
+        # load not found
+        sim_bc_builder: NXOpen.CAE.SimBCBuilder = sim_simulation.CreateBcBuilderForLoadDescriptor("ComponentMomentField", moment_name, 0) # overloaded function is unknow to intellisense
+    else:
+        sim_bc_builder: NXOpen.CAE.SimBCBuilder = sim_simulation.CreateBcBuilderForBc(sim_load[0])
+        the_lw.WriteFullline(f"A force with the name {moment_name} already exists, therefore updating the force.")
+    
+    # get the group
+    selection_recipes: List[NXOpen.CAE.SelectionRecipe] = [item for item in sim_part.SelectionRecipes if item.Name.lower() == selection_recipe_name.lower()]
+    if len(selection_recipes) == 0:
+        the_lw.WriteFullline(f"Group {selection_recipe_name} not found. Exiting")
+        return
+    elif len(selection_recipes) > 1:
+        the_lw.WriteFullline(f"Multiple groups with the name {selection_recipe_name} found. Exiting")
+        return
+    else:
+        selection_recipe: NXOpen.CAE.SelectionRecipe = selection_recipes[0]
+    
+    objects = [None] * 1
+    objects[0] = NXOpen.CAE.SetObject()
+    objects[0].Obj = selection_recipe
+    objects[0].SubType = NXOpen.CAE.CaeSetObjectSubType.SelRecipe
+    objects[0].SubId = 0
+
+    # define the force
+    property_table: NXOpen.CAE.PropertyTable = sim_bc_builder.PropertyTable
+    set_manager: NXOpen.CAE.SetManager = sim_bc_builder.TargetSetManager
+    set_manager.SetTargetSetMembers(0, selection_recipe_filter_type, objects)
+    
+    unit1: NXOpen.Unit = sim_part.UnitCollection.FindObject("NewtonMeter")
+    expression1: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(mx), unit1)
+    expression2: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(my), unit1)
+    expression3: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(mz), unit1)
+
+    field_manager: NXOpen.Fields.FieldManager = cast(NXOpen.Fields.FieldManager, sim_part.FindObject("FieldManager"))
+    expressions: List[NXOpen.Expression] = [NXOpen.Expression.Null] * 3 
+    expressions[0] = expression1
+    expressions[1] = expression2
+    expressions[2] = expression3
+    vector_field_wrapper: NXOpen.Fields.VectorFieldWrapper = field_manager.CreateVectorFieldWrapperWithExpressions(expressions)
+    
+    property_table.SetVectorFieldWrapperPropertyValue("CartesianMagnitude", vector_field_wrapper)
+    
+    sim_bc: NXOpen.CAE.SimBC = sim_bc_builder.CommitAddBc()
+    
+    sim_bc_builder.Destroy()
+
+    return sim_bc
+
+
+def create_cartesian_formula_field(variable_name: str, variable_type: str, unit: NXOpen.Unit, formula: str, field_name: str, work_part: NXOpen.CAE.CaePart=None) -> NXOpen.Fields.SpatialMap:
+    """This function creates a field (spatial map) in which the value of a given variable is calculated based on a formula.
+        This formula can depend on the global coordinates x, y and z.
+
+    Parameters
+    ----------
+    variable_name: str
+        The name of the dependent domain, as displayed in the 'Name' column of the 'Dependent Domain' section in the GUI (e.g. 'pressure')
+    variable_type: str
+        The name of the dependent domain, as displayed in the Pulldown of the 'Dependent Domain' section in the GUI (e.g. 'Pressure')
+    unit: NXOpen.Unit
+        The unit of the variable. (e.g. work_part.UnitCollection.FindObject("PressureNewtonPerSquareMilliMeter"))
+    formula: str
+        The formula as provided in the 'Definition' section in the GUI (e.g. 'ug_val(x) * 10')
+    field_name: str
+        The name of the field.
+    work_part: NXOpen.CAE.CaePart (Optional)
+        The part to create the field in. If None, the work part is used.
+
+    Returns
+    -------
+    NXOpen.CAE.SimBC
+        Returns the created moment.
+
+    Notes
+    -----
+    Tested in SC2312
+    """
+    if work_part is None:
+        work_part = the_session.Parts.BaseWork
+    
+    # check if field does not already exist
+    field_manager = work_part.FieldManager
+    try:
+        field_manager.FindObject(field_name)
+        the_lw.WriteFullline(f"ERROR: Field {field_name} already exists. Field {field_name} not created")
+        return None
+    except:
+        pass
+    
+    # the dependent domain
+    try:
+        name_variable = field_manager.GetNameVariable(variable_name, variable_type)
+    except:
+        the_lw.WriteFullline(f"ERROR: Variable {variable_name} of type {variable_type} not found. Exiting")
+        return None
+    field_variable = field_manager.CreateDependentVariable(NXOpen.Fields.Field.Null, name_variable, unit, NXOpen.Fields.FieldVariable.ValueType.Real)
+    field_expression = field_manager.CreateSubFieldExpression(field_variable)
+    
+    spatial_map_builder = field_manager.CreateSpatialMapBuilder(NXOpen.Fields.SpatialMap.Null)
+    spatial_map_builder.CoordSystem = NXOpen.CoordinateSystem.Null
+    spatial_map_builder.FitSurfaceCoordinateSystem = NXOpen.CoordinateSystem.Null
+    spatial_map_builder.MapType = NXOpen.Fields.SpatialMap.TypeEnum.Global
+
+    # the 'independent domain'
+    unit_milli_meter = work_part.UnitCollection.FindObject("MilliMeter")
+    name_variable_x = field_manager.GetNameVariable("x", "Length")
+    field_variable_x = field_manager.CreateIndependentVariable(NXOpen.Fields.Field.Null, name_variable_x, unit_milli_meter, NXOpen.Fields.FieldVariable.ValueType.Real, False, True, 1e+19, False, True, 9.9999999999999998e-20, False, 2, False, 1.0)
+    name_variable_y = field_manager.GetNameVariable("y", "Length")
+    field_variable_y = field_manager.CreateIndependentVariable(NXOpen.Fields.Field.Null, name_variable_y, unit_milli_meter, NXOpen.Fields.FieldVariable.ValueType.Real, False, True, 1e+19, False, True, 9.9999999999999998e-20, False, 2, False, 1.0)
+    name_variable_z = field_manager.GetNameVariable("z", "Length")
+    field_variable_z = field_manager.CreateIndependentVariable(NXOpen.Fields.Field.Null, name_variable_z, unit_milli_meter, NXOpen.Fields.FieldVariable.ValueType.Real, False, True, 1e+19, False, True, 9.9999999999999998e-20, False, 2, False, 1.0)
+    spatial_map: NXOpen.Fields.SpatialMap = spatial_map_builder.Commit()
+    
+    # the fomula section
+    indep_var_array = [NXOpen.Fields.FieldVariable.Null] * 3
+    indep_var_array[0] = field_variable_x
+    indep_var_array[1] = field_variable_y
+    indep_var_array[2] = field_variable_z
+    dep_exp_rray = [NXOpen.Fields.FieldExpression.Null] * 1 
+    dep_exp_rray[0] = field_expression
+    field_manager.CreateFieldFormula(field_name, indep_var_array, dep_exp_rray)
+    field_expression.EditFieldExpression(formula, unit, indep_var_array, False)
+    
+    spatial_map: NXOpen.Fields.SpatialMap = spatial_map_builder.Commit()    
+    spatial_map_builder.Destroy()
+
+    return spatial_map
+
+
+def create_pressure_on_group(group_name: str, pressure: float, force_name: str, group_filter_type: NXOpen.CAE.CaeSetGroupFilterType.GeomEdge) -> NXOpen.CAE.SimBC:
+    """This function creates a force on a node.
+    
+    Parameters
+    ----------
+    group_name: str
+        The name of the group to apply the pressure to.
+    pressure: float
+        The magnitude of the pressure in Newton per square meter (Pascals).
+    force_name: str
+        The name of the force for the GUI.
+    group_filter_type: NXOpen.CAE.CaeSetGroupFilterType
+        The object type the filter from the group.
+
+    Returns
+    -------
+    NXOpen.CAE.SimBC
+        Returns the created force.
+
+    Notes
+    -----
+    Tested in SC2312
+    """
+    base_part: NXOpen.BasePart = the_session.Parts.BaseWork
+    # check if started from a SimPart, returning othwerwise
+    if not isinstance(base_part, NXOpen.CAE.SimPart):
+        the_lw.WriteFullline("create_pressure_on_group needs to start from a .sim file. Exiting")
+        return
+    # we are now sure that basePart is a SimPart
+    sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, base_part) # explicit casting makes it clear
+    
+    sim_simulation: NXOpen.CAE.SimSimulation = sim_part.Simulation
+    # make the active solution inactive, so load is not automatically added to active subcase
+    sim_simulation.ActiveSolution = NXOpen.CAE.SimSolution.Null
+
+    # check if a nodal force with that name already exists. If it does, update, if not create it
+    sim_loads: List[NXOpen.CAE.SimLoad] = sim_part.Simulation.Loads
+    sim_load: NXOpen.CAE.SimLoad = [item for item in sim_loads if item.Name.lower() == force_name.lower()]
+    if len(sim_load) == 0:
+        # load not found
+        sim_bc_builder: NXOpen.CAE.SimBCBuilder = sim_simulation.CreateBcBuilderForLoadDescriptor("2D3DFaceNormalPressure", force_name, 0) # overloaded function is unknow to intellisense
+    else:
+        sim_bc_builder: NXOpen.CAE.SimBCBuilder = sim_simulation.CreateBcBuilderForBc(sim_load[0])
+        the_lw.WriteFullline(f"A force with the name {force_name} already exists, therefore updating the force.")
+    
+    # get the group
+    groups: List[NXOpen.CAE.CaeGroup] = [item for item in sim_part.CaeGroups if item.Name.lower() == group_name.lower()]
+    if len(groups) == 0:
+        the_lw.WriteFullline(f"Group {group_name} not found. Exiting")
+        return
+    elif len(groups) > 1:
+        the_lw.WriteFullline(f"Multiple groups with the name {group_name} found. Exiting")
+        return
+    else:
+        group: NXOpen.CAE.CaeGroup = groups[0]
+
+    # define the force
+    property_table: NXOpen.CAE.PropertyTable = sim_bc_builder.PropertyTable
+    set_manager: NXOpen.CAE.SetManager = sim_bc_builder.TargetSetManager
+    set_manager.SetTargetSetGroup(0, group_filter_type, group)
+    
+    unit_pascal: NXOpen.Unit = sim_part.UnitCollection.FindObject("Pascals")
+    expression: NXOpen.Expression = sim_part.Expressions.CreateSystemExpressionWithUnits(str(pressure), unit_pascal)
+
+    field_manager: NXOpen.Fields.FieldManager = cast(NXOpen.Fields.FieldManager, sim_part.FindObject("FieldManager"))
+    scalar_field_wrapper: NXOpen.Fields.VectorFieldWrapper = field_manager.CreateScalarFieldWrapperWithExpression(expression)
+    
+    property_table.SetScalarFieldWrapperPropertyValue("TotalPressure", scalar_field_wrapper)
+    
+    sim_bc: NXOpen.CAE.SimBC = sim_bc_builder.CommitAddBc()
+    
+    sim_bc_builder.Destroy()
+
+    return sim_bc
+
+
+def set_field_in_pressure_load(load_name: str, field_name: str) -> NXOpen.CAE.SimBC:
+    '''
+    This function sets the field in a pressure load.
+
+    Parameters
+    ----------
+    load_name: str
+        The name of the pressure load to apply the field to.
+    field_name: str
+        The name of the field to apply as the pressure value.
+
+    Returns
+    -------
+    NXOpen.CAE.SimBC
+        Returns the created force.
+
+    Notes
+    -----
+    Tested in SC2312
+    Note the unit will be taken from the pressure field. Take care that the unit is correct.
+
+    '''
+    base_part: NXOpen.BasePart = the_session.Parts.BaseWork
+    # check if started from a SimPart, returning othwerwise
+    if not isinstance(base_part, NXOpen.CAE.SimPart):
+        the_lw.WriteFullline("create_pressure_on_group needs to start from a .sim file. Exiting")
+        return
+    # we are now sure that basePart is a SimPart
+    sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, base_part) # explicit casting makes it clear
+    sim_simulation = sim_part.Simulation
+    
+    sim_loads: List[NXOpen.CAE.SimLoad] = [item for item in sim_part.Simulation.Loads if item.Name.lower() == load_name.lower()]
+    if len(sim_loads) == 0:
+        the_lw.WriteFullline(f"Load {load_name} not found. Exiting")
+        return
+    elif len(sim_loads) > 1:
+        the_lw.WriteFullline(f"Multiple loads with the name {load_name} found. Exiting")
+        return
+    sim_load = sim_loads[0]
+    sim_bc_builder = sim_simulation.CreateBcBuilderForBc(sim_load)
+
+    # check if field exists
+    field_manager = sim_part.FieldManager
+    # FindObject throws an exception if the object is not found
+    try: 
+        field = field_manager.FindObject(field_name)
+    except:
+        the_lw.WriteFullline(f"ERROR: Field {field_name} not found.")
+        return None
+    
+    property_table = sim_bc_builder.PropertyTable
+    scalar_field_wrapper = property_table.GetScalarFieldWrapperPropertyValue("TotalPressure")
+    try:
+        scalar_field_wrapper.SetField(field, 1.0)
+        property_table.SetScalarFieldWrapperPropertyValue("TotalPressure", scalar_field_wrapper)
+    except:
+        the_lw.WriteFullline(f"ERROR: Field {field_name} not set in pressure load {load_name}. Is the field compatible with the pressure load?")
+        return None
+
+    sim_bc = sim_bc_builder.CommitAddBc()
+    sim_bc_builder.Destroy()
+
+    return sim_bc
