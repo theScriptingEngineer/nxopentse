@@ -328,6 +328,37 @@ def set_camera(camera_name: str, base_part: NXOpen.BasePart=None) -> None:
 
 
 def save_view_to_file(file_name: str) -> None:
+    """
+    Saves the current view of the model to a file in TIFF format.
+
+    This function exports the current view of the model to an image file in TIFF format. If the specified file already exists, 
+    it is deleted to ensure that the new image overwrites the previous one. The image export options are set to enhance edges, 
+    make the background transparent, and save in the TIFF file format.
+
+    Parameters
+    ----------
+    file_name : str
+        The name of the file to save the view as. The function will append the `.tif` extension if it is not already included. 
+        If no path is provided, the file will be saved in the current directory.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file path is invalid or the file cannot be created.
+        
+    IOError
+        If an error occurs during the image export process.
+
+    Notes
+    -----
+    - The function currently only supports saving images in TIFF format.
+    - If the file already exists, it will be deleted and overwritten with the new image.
+    - Tested in SC2312
+    """
     # TODO: add options for file formats other than .tiff
     # check if fileName contains a path. If not save with the .sim file
     file_path_without_extension: str = create_full_path(file_name, "") # should be in line with imageExportBuilder.FileFormat
@@ -354,9 +385,37 @@ def save_view_to_file(file_name: str) -> None:
 
 
 def delete_post_groups(sim_part: NXOpen.CAE.SimPart=None) -> None:
+    """
+    Deletes automatically created post groups from a .sim file.
+
+    This function searches for groups within the given `SimPart` that have names starting with "PostGroup" and deletes 
+    those that have a numeric suffix (i.e., automatically generated post groups). The function ensures that user-created groups 
+    are not accidentally deleted by checking for a numeric suffix.
+
+    Parameters
+    ----------
+    sim_part : NXOpen.CAE.SimPart, optional
+        The CAE SimPart to search for post groups. If no `SimPart` is provided, the function uses the currently active work part.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    ValueError
+        If the function is called with a part that is not a `.sim` file.
+
+    Notes
+    -----
+    - This function marks the deleted post groups for removal and performs an update to apply the changes.
+    - The function only deletes post groups with names that contain a numeric suffix to avoid deleting user-created groups.
+    - Tested in SC2312
+    """
+
     if sim_part is None:
         if not isinstance(the_session.Parts.BaseWork, NXOpen.CAE.SimPart):
-            raise ValueError("map_group_to_postgroup needs to be called on a .sim file!")
+            raise ValueError("delete_post_groups needs to be called on a .sim file!")
         sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, the_session.Parts.BaseWork)
 
     found_post_group: bool = False
@@ -364,7 +423,7 @@ def delete_post_groups(sim_part: NXOpen.CAE.SimPart=None) -> None:
     post_groups: List[NXOpen.CAE.CaeGroup] = [x for x in cae_groups if x.Name.startswith("PostGroup")]
 
     for item in post_groups:
-        # only delete the ones with a number at the end (so there is the least change of accidentily deleting an acutal user created group)
+        # only delete the ones with a number at the end (so there is the least chance of accidentily deleting an acutal user created group)
         if item.Name[9:].isdigit():
             the_session.UpdateManager.AddObjectsToDeleteList([cast(NXOpen.NXObject, item)])
             found_post_group = True
@@ -406,6 +465,65 @@ def print_message() -> None:
 
 
 def create_screen_shots() -> None:
+    """
+    Automatically generates screenshots of post-processing results using definitions provided in a .csv file.
+
+    The .csv file should be formatted as follows:
+    FileName, AnnotationText, TemplateName, GroupName, CameraName, Solution, Subcase, Iteration, ResultType, ComponentName
+
+    Example:
+    screenshot1.tif, Text displayed on top of screenshot1, Template 1, Group 1, TopView, Solution 1, 1, 1, Stress - Element-Nodal, VonMises
+
+    The script runs from the .sim file and uses the data in the .csv file to generate screenshots. Each row in the file corresponds 
+    to a different screenshot and its associated settings.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    - FileName: Specifies the file name (with or without path) for the screenshot. If no path is provided, it is saved in the 
+      location of the .sim file.
+    - AnnotationText: Text to be displayed on top of the screenshot.
+    - TemplateName: Name of the PostView template to apply for displaying results.
+    - GroupName: Name of the CaeGroup to display. The name is not case-sensitive.
+    - CameraName: Name of the camera (as seen in the GUI) used to orient the screenshot view.
+    - Solution: The name of the solution to display.
+    - Subcase: The subcase number (starting from 1).
+    - Iteration: The iteration number (starting from 1). Defaults to 1 for results without iterations.
+    - ResultType: The type of result (e.g., "Stress - Element-Nodal", "Displacement - Nodal").
+    - ComponentName: Name of the result component (case-sensitive) such as Scalar, VonMises, or Displacement components.
+
+    - The user needs to manually ensure that the camera view is saved before generating the screenshot, otherwise, unexpected results may occur.
+
+    - A manually edited template.xml file may be required:
+        * Delete specific entries under the <ResultOptions> tag:
+            - <LoadCase>0</LoadCase>
+            - <Iteration>0</Iteration>
+            - <SubIteration>-1</SubIteration>
+            - <Result>[Displacement][Nodal]</Result>
+            - <Component>Magnitude</Component>
+
+    It is advised to update the group visibility with the following (assuming there are less than 1000 groups in the model).
+    Note that other types might exist (like <Num3DGroups>). Adjust accordingly.
+            <GroupVisibilities>
+                <Num1DGroups>1000</Num1DGroups>
+                <Visibilities1DGroups>1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1</Visibilities1DGroups>
+                <Num2DGroups>1000</Num2DGroups>
+                <Visibilities2DGroups>1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1</Visibilities2DGroups>
+            </GroupVisibilities>
+
+    Post processing XML template files are located under the location where UGII_CAE_POST_TEMPLATE_USER_DIR is pointing to.
+    This can be found in the log file.
+    If you also set UGII_CAE_POST_TEMPLATE_EDITOR to for example notepad++.exe,
+    you can directly edit by right-clicking the template in the NX GUI
+    
+    """
     the_lw.Open()
 
     # user feedback
