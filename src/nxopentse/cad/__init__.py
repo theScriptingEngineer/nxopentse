@@ -1,5 +1,6 @@
 from .code import   nx_hello,\
-                    get_all_bodies,\
+                    get_all_bodies_in_part,\
+                    get_all_bodies_in_component,\
                     get_faces_of_type, \
                     get_all_points,\
                     get_all_features,\
@@ -13,4 +14,6 @@ from .code import   nx_hello,\
                     get_area_faces_with_color, \
                     create_point, \
                     create_line_between_two_points, \
-                    delete_feature
+                    delete_feature,\
+                    get_named_datum_planes,\
+                    create_bounding_box
