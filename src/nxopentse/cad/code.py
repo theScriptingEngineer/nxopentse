@@ -659,7 +659,7 @@ def get_named_datum_planes(cad_part: NXOpen.Part) -> List[NXOpen.DatumPlane]:
     return named_datum_planes
 
 
-def CreateBoundingBox(workPart: NXOpen.Part, bodies: List[NXOpen.Body], sheet_bodies: bool=False) -> NXOpen.Features.ToolingBox:
+def create_bounding_box(workPart: NXOpen.Part, bodies: List[NXOpen.Body], sheet_bodies: bool=False) -> NXOpen.Features.ToolingBox:
     '''
     Create a bounding box around the given bodies.
     For sheet bodies, 1mm is added to the box size in all directions, positive and negative. Thus the box size needs to be subtracted by 2mm to get the correct size.
