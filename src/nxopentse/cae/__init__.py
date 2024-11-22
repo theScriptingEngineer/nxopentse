@@ -18,7 +18,14 @@ from .preprocessing import hello, \
                             create_displacement_field, \
                             get_all_fe_elements, \
                             add_related_nodes_and_elements, \
-                            copy_groups_to_sim_part
+                            copy_groups_to_sim_part, \
+                            create_force_on_group, \
+                            create_force_on_selection_recipe, \
+                            create_moment_on_group, \
+                            create_moment_on_selection_recipe, \
+                            create_cartesian_formula_field, \
+                            create_pressure_on_group, \
+                            set_field_in_pressure_load
 
 from .postprocessing import PostInput, \
                             hello, \
