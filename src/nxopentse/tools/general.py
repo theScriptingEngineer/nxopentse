@@ -179,3 +179,77 @@ def create_string_attribute(nx_object: NXOpen.NXObject, title: str, value: str, 
     nErrs1 = the_session.UpdateManager.DoUpdate(id1)
     
     attributePropertiesBuilder1.Destroy()    
+
+
+def show_only(objects: List[NXOpen.DisplayableObject], base_part: NXOpen.BasePart=None) -> None:
+    """
+    Show only the specified objects.
+
+    Parameters
+    ----------
+    objects : List[NXOpen.DisplayableObject]
+        The objects to show.
+
+    NOTES
+    -----
+    Tested in Simcenter 2406
+    """
+    if base_part is None:
+        base_part = the_session.Parts.BaseWork
+    # hide everyting
+    all_displayable_objects = [item for item in base_part.Views.WorkView.AskVisibleObjects()]
+    for item in all_displayable_objects:
+        item.Blank()
+    # show the objects we want to show
+    for item in objects:
+        item.Unblank()
+
+
+def move_object_to_layer(object: NXOpen.DisplayableObject, layer: int, work_part: NXOpen.Part=None):
+    ''' 
+    Move a displayable object to a specified layer.
+
+    Parameters
+    ----------
+    object : NXOpen.DisplayableObject
+        The object to move.
+    layer : int
+        The layer to move the object to.
+    work_part : NXOpen.Part, optional
+        The part to move the object in. Defaults to the work part.
+
+    NOTES
+    -----
+    '''
+    if work_part is None:
+        work_part = the_session.Parts.Work
+    
+    objectArray1 = [NXOpen.DisplayableObject.Null] * 1 
+    objectArray1[0] = object
+    work_part.Layers.MoveDisplayableObjects(layer, objectArray1)    
+
+
+def color_object(displayable_object: NXOpen.DisplayableObject, color: int = 42) -> None:
+    """
+    Color a displayable object with a specified color.
+
+    Parameters
+    ----------
+    displayable_object: NXOpen.DisplayableObject) 
+        The displayable object to color.
+    color: int, optional
+        The color to apply. Defaults to 42.
+    """
+    display_modification = the_session.DisplayManager.NewDisplayModification()
+    display_modification.ApplyToAllFaces = True
+    display_modification.ApplyToOwningParts = False
+    display_modification.NewColor = color
+    
+    objects1 = [NXOpen.DisplayableObject.Null] * 1 
+    objects1[0] = displayable_object
+    display_modification.Apply(objects1)
+    
+    markId4 = the_session.SetUndoMark(NXOpen.Session.MarkVisibility.Visible, "Edit Object Display")
+    nErrs1 = the_session.UpdateManager.DoUpdate(markId4)
+    
+    display_modification.Dispose()

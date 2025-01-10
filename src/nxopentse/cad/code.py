@@ -1,6 +1,6 @@
 import os
 import math
-from typing import List, Optional, cast
+from typing import List, Tuple, Optional, cast
 
 import NXOpen
 import NXOpen.Features
@@ -43,95 +43,34 @@ def get_all_bodies_in_part(work_part: NXOpen.Part=None) -> List[NXOpen.Body]:
     return all_bodies
 
 
-def get_all_bodies_in_component(component: NXOpen.Assemblies.Component) -> List[NXOpen.Body]:
-    """
-    Get all the bodies in the given component. (thus not the part)
+def get_all_vertices_in_body(body: NXOpen.Body) -> List[NXOpen.Point3d]:
+    '''
+    Get all the unique vertices in a body.
+    Vertices shared by multiple edges are only counted once.
 
     Parameters
     ----------
-    component : NXOpen.Assemblies.Component
-        The component for which to get all bodies.
-    
+    body : NXOpen.Body
+        The body to get the vertices of.
+
     Returns
     -------
-    List[NXOpen.Body]
-        A list of all the bodies in the component.
+    List[NXOpen.Point3d]
+        A list of all the unique vertices in the body. 
+    '''
+    all_edges: List[NXOpen.Edge] = body.GetEdges()
+    all_vertices: List[List[float]] = []
+    for edge in all_edges:
+        vertices: List[NXOpen.Point3d] = edge.GetVertices() # type: ignore a list is retured in Python
+        for vertex in vertices:
+            all_vertices.append([vertex.X, vertex.Y, vertex.Z])
+    # Convert lists to tuples and use a set to remove duplicates
+    unique_data = set(tuple(row) for row in all_vertices)
 
-    NOTES
-    -----
-    The bodies in the component are not the same as the bodies in the part. As a part be be used multiple times in an assembly.
-    Tested in Simcenter 2312
-    """
-    if component is None:
-        return []
-    all_bodies_in_part: List[NXOpen.Body] = [body for body in component.Prototype.Bodies]
-    all_bodies_in_component: List[NXOpen.Body] = [component.FindOccurrence(body) for body in all_bodies_in_part]
-    if all_bodies_in_component is None or all_bodies_in_component == [None] * len(all_bodies_in_component):
-        # the component doesn't contain any bodies, so we return an empty list
-        # this happens for example also when the 'reference set' is set to 'MODEL'
-        return []
-    return all_bodies_in_component
+    # Convert back to a list of NXOpen.Point3d
+    all_vertices_point3d: List[NXOpen.Point3d] = [NXOpen.Point3d(row[0], row[1], row[2]) for row in unique_data]
 
-
-def get_all_curves_in_component(component: NXOpen.Assemblies.Component) -> List[NXOpen.Curve]:
-    """
-    Get all the curves in the given component. (thus not the part)
-
-    Parameters
-    ----------
-    component : NXOpen.Assemblies.Component
-        The component for which to get all curves.
-    
-    Returns
-    -------
-    List[NXOpen.Curve]
-        A list of all the curves in the component.
-
-    NOTES
-    -----
-    The curves in the component are not the same as the curves in the part. As a part be be used multiple times in an assembly.
-    Tested in Simcenter 2312
-    """
-    if component is None:
-        return []
-    all_curves_in_part: List[NXOpen.Curve] = [curve for curve in component.Prototype.Curves]
-    the_lw.WriteFullline(f'Found {len(all_curves_in_part)} curves in component {component.JournalIdentifier}')
-    all_curves_in_component: List[NXOpen.Curve] = [component.FindOccurrence(curve) for curve in all_curves_in_part]
-    if all_curves_in_component is None or all_curves_in_component == [None] * len(all_curves_in_part):
-        # the component doesn't contain any curves, so we return an empty list
-        # this happens for example also when the reference set is set to 'MODEL'
-        return []
-    return all_curves_in_component
-
-
-def get_all_points_in_component(component: NXOpen.Assemblies.Component) -> List[NXOpen.Point]:
-    """
-    Get all the points in the given component. (thus not the part)
-
-    Parameters
-    ----------
-    component : NXOpen.Assemblies.Component
-        The component for which to get all points.
-    
-    Returns
-    -------
-    List[NXOpen.Point]
-        A list of all the points in the component.
-
-    NOTES
-    -----
-    The points in the component are not the same as the points in the part. As a part be be used multiple times in an assembly.
-    Tested in Simcenter 2312
-    """
-    if component is None:
-        return []
-    all_points_in_part: List[NXOpen.Point] = [point for point in component.Prototype.Points]
-    all_points_in_component: List[NXOpen.Point] = [component.FindOccurrence(point) for point in all_points_in_part]
-    if all_points_in_component is None or all_points_in_component == [None] * len(all_points_in_component):
-        # the component doesn't contain any points, so we return an empty list
-        # this happens for example also when the 'reference set' is set to 'MODEL'
-        return []
-    return all_points_in_component
+    return all_vertices_point3d
 
 
 def get_faces_of_type(body: NXOpen.Body, face_type: NXOpen.Face.FaceType) -> List[NXOpen.Face]:
@@ -156,6 +95,83 @@ def get_faces_of_type(body: NXOpen.Body, face_type: NXOpen.Face.FaceType) -> Lis
         if all_faces[i].SolidFaceType is face_type:
             faces_of_type.append(all_faces[i])
     return faces_of_type
+
+
+def get_face_properties(face: NXOpen.Face, work_part: NXOpen.Part=None) -> Tuple[float, float, float, NXOpen.Point3d, float, float, NXOpen.Point3d, bool]:
+    '''
+    Get the properties of a face.
+
+    Parameters
+    ----------
+    face : NXOpen.Face
+        The face for which to get the properties.
+    work_part : NXOpen.Part, optional
+        The part in which to perform the measurement. Defaults to work part.
+
+    Returns
+    -------
+    Tuple[float, float, float, NXOpen.Point3d, float, float, NXOpen.Point3d, bool]
+        A tuple with the following values:
+        - Area (in mm2)
+        - Perimeter (in mm)
+        - Radius or Diameter (in mm)
+        - Center of Gravity (in mm)
+        - Minimum Radius of Curvature (in mm)
+        - Area Error Estimate (in mm2)
+        - Anchor Point (in mm)
+        - Is Approximate (bool)
+
+    NOTES
+    -----
+    '''
+    if work_part is None:
+        work_part = the_session.Parts.Work
+    
+    measure_prefs_builder = the_session.Preferences.CreateMeasurePrefsBuilder()
+    measure_prefs_builder.InfoUnits = NXOpen.MeasurePrefsBuilder.JaMeasurePrefsInfoUnit.CustomUnit
+    measure_prefs_builder.ShowValueOnlyToggle = False
+    measure_prefs_builder.ConsoleOutput = False
+    
+    work_part.MeasureManager.SetPartTransientModification()
+    
+    sc_collector_1 = work_part.ScCollectors.CreateCollector()
+    sc_collector_1.SetMultiComponent()
+    
+    work_part.MeasureManager.SetPartTransientModification()
+    selectionIntentRuleOptions1 = work_part.ScRuleFactory.CreateRuleOptions()
+    selectionIntentRuleOptions1.SetSelectedFromInactive(False)
+    
+    faces1 = [NXOpen.Face.Null] * 1 
+    faces1[0] = face
+    faceDumbRule1 = work_part.ScRuleFactory.CreateRuleFaceDumb(faces1, selectionIntentRuleOptions1)
+    
+    selectionIntentRuleOptions1.Dispose()
+    rules1 = [None] * 1 
+    rules1[0] = faceDumbRule1
+    sc_collector_1.ReplaceRules(rules1, False)
+    
+    work_part.MeasureManager.SetPartTransientModification()
+    
+    scCollector2 = work_part.ScCollectors.CreateCollector()
+    scCollector2.SetMultiComponent()
+    
+    faceaccuracy1 = measure_prefs_builder.FaceAccuracy
+    work_part.MeasureManager.ClearPartTransientModification()
+    
+    faces = [NXOpen.ISurface.Null] * 1 
+    faces[0] = face
+    area, perimeter, radiusdiameter, cog, minradiusofcurvature, areaerrorestimate, anchorpoint, isapproximate = the_session.Measurement.GetFaceProperties(faces, 0.98999999999999999, NXOpen.Measurement.AlternateFace.Radius, True)
+    
+    work_part.MeasureManager.SetPartTransientModification()
+
+    datadeleted1 = the_session.DeleteTransientDynamicSectionCutData()
+    
+    sc_collector_1.Destroy()
+    scCollector2.Destroy()
+    
+    work_part.MeasureManager.ClearPartTransientModification()
+
+    return area, perimeter, radiusdiameter, cog, minradiusofcurvature, areaerrorestimate, anchorpoint, isapproximate
 
 
 def get_all_points(work_part: NXOpen.Part=None) -> List[NXOpen.Point]:
@@ -610,6 +626,44 @@ def create_line_between_two_points(point1: NXOpen.Point, point2: NXOpen.Point, w
     return cast(NXOpen.Features.AssociativeLine, associative_line_feature)
 
 
+def create_spline_through_points(points: List[NXOpen.Point], work_part: NXOpen.Part=None) -> NXOpen.Features.StudioSpline:
+    '''
+    Create a spline through the given points.
+
+    Parameters
+    ----------
+    points : List[NXOpen.Point]
+        The points through which the spline should go.
+    work_part : NXOpen.Part, optional
+        The part in which to create the spline. Defaults to work part.
+
+    Returns
+    -------
+    NXOpen.Features.StudioSpline
+        The created spline feature, from which the spline can be retrieved.
+
+    NOTES
+    -----
+    '''
+    if work_part is None:
+        work_part = the_session.Parts.Work
+
+    studio_spline_builder_ex: NXOpen.Features.StudioSplineBuilderEx = work_part.Features.CreateStudioSplineBuilderEx(NXOpen.NXObject.Null)
+    studio_spline_builder_ex.Degree = 2
+
+    for point in points:
+        coordinates1 = NXOpen.Point3d(point.Coordinates.X, point.Coordinates.Y, point.Coordinates.Z)
+        point1 = work_part.Points.CreatePoint(coordinates1)
+        geometric_constraint_data = studio_spline_builder_ex.ConstraintManager.CreateGeometricConstraintData()
+        geometric_constraint_data.Point = point1
+        studio_spline_builder_ex.ConstraintManager.Append(geometric_constraint_data)
+    
+    spline_feature = studio_spline_builder_ex.Commit()
+    studio_spline_builder_ex.Destroy()
+
+    return spline_feature
+    
+
 def delete_feature(feature_to_delete: NXOpen.Features.Feature) -> None:
     """
     Delete a feature.
@@ -741,3 +795,232 @@ def create_bounding_box(workPart: NXOpen.Part, bodies: List[NXOpen.Body], sheet_
     toolingBoxBuilder.Destroy()
 
     return boundingBox
+
+
+def trim_body_with_plane(body: NXOpen.Body, plane: NXOpen.DatumPlane, work_part: NXOpen.Part=None) -> NXOpen.Features.TrimBody:
+    if work_part is None:
+        work_part = the_session.Parts.Work
+    trim_body_2_builder = work_part.Features.CreateTrimBody2Builder(NXOpen.Features.TrimBody2.Null)
+    
+    scCollector1 = work_part.ScCollectors.CreateCollector()
+    selectionIntentRuleOptions1 = work_part.ScRuleFactory.CreateRuleOptions()
+    selectionIntentRuleOptions1.SetSelectedFromInactive(False)
+    
+    bodies = [NXOpen.Body.Null] * 1 
+    bodies[0] = body
+    bodyFeatureRule1 = work_part.ScRuleFactory.CreateRuleBodyDumb(bodies, False, selectionIntentRuleOptions1)
+    
+    selectionIntentRuleOptions1.Dispose()
+    rules1 = [None] * 1 
+    rules1[0] = bodyFeatureRule1
+    scCollector1.ReplaceRules(rules1, False)
+    
+    trim_body_2_builder.TargetBodyCollector = scCollector1
+
+    selectionIntentRuleOptions2 = work_part.ScRuleFactory.CreateRuleOptions()
+    selectionIntentRuleOptions2.SetSelectedFromInactive(False)
+    faces1 = [NXOpen.DatumPlane.Null] * 1 
+    faces1[0] = plane
+    faceDumbRule1 = work_part.ScRuleFactory.CreateRuleFaceDatum(faces1, selectionIntentRuleOptions2)
+    
+    selectionIntentRuleOptions2.Dispose()
+    rules2 = [None] * 1 
+    rules2[0] = faceDumbRule1
+    trim_body_2_builder.BooleanTool.FacePlaneTool.ToolFaces.FaceCollector.ReplaceRules(rules2, False)
+
+    trim_body_feature = trim_body_2_builder.Commit()
+    trim_body_2_builder.Destroy()
+    return trim_body_feature
+
+
+def create_datum_plane_on_planar_face(face: NXOpen.Face, work_part: NXOpen.Part=None) -> NXOpen.Features.DatumPlaneFeature:
+    '''
+    Create a datum plane on a planar face.
+
+    Parameters
+    ----------
+    face : NXOpen.Face
+        The face on which to create the datum plane.
+    work_part : NXOpen.Part, optional
+        The part in which to create the datum plane. Defaults to work part.
+
+    Returns
+    -------
+    NXOpen.Features.DatumPlaneFeature
+        The created datum plane feature, from which the datum plane can be retrieved.
+
+    NOTES
+    -----
+    '''
+    if work_part is None:
+        work_part = the_session.Parts.Work
+
+    datum_plane_builder = work_part.Features.CreateDatumPlaneBuilder(NXOpen.Features.Feature.Null)
+    plane = datum_plane_builder.GetPlane()
+    plane.SetMethod(NXOpen.PlaneTypes.MethodType.Point)
+    plane.SetUpdateOption(NXOpen.SmartObject.UpdateOption.WithinModeling)
+
+    scalar1 = work_part.Scalars.CreateScalar(0.5, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling)
+    scalar2 = work_part.Scalars.CreateScalar(0.5, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling)
+    point = work_part.Points.CreatePoint(face, scalar1, scalar2, NXOpen.SmartObject.UpdateOption.WithinModeling)
+    
+    geom = [NXOpen.NXObject.Null] * 1 
+    geom[0] = point
+    plane.SetGeometry(geom)
+    
+    plane.SetAlternate(NXOpen.PlaneTypes.AlternateType.One)
+    plane.Evaluate()
+    plane.RemoveOffsetData()
+    plane.Evaluate()
+    
+    datum_plane_feature = datum_plane_builder.CommitFeature()
+    datum_plane_builder.Destroy()
+
+    return datum_plane_feature
+
+
+def get_axes_of_coordinate_system(coordinate_system_feature: NXOpen.Features.DatumCsys, work_part: NXOpen.Part=None) -> List[NXOpen.DatumAxis]:
+    '''
+    Get the axes of a coordinate system.
+
+    Parameters
+    ----------
+    coordinate_system_feature : NXOpen.Features.DatumCsys
+        The coordinate system feature for which to get the axes.
+    work_part : NXOpen.Part, optional
+        The part in which to get the axes. Defaults to work part.
+
+    Returns
+    -------
+    List[NXOpen.DatumAxis]
+        A list of the axes of the coordinate system.
+
+    NOTES
+    -----
+    '''
+    if work_part is None:
+        work_part = the_session.Parts.Work
+    builder: NXOpen.Features.DatumCsysBuilder =  work_part.Features.CreateDatumCsysBuilder(coordinate_system_feature)
+    axis: List[NXOpen.DatumAxis] = []
+    for item in builder.GetCommittedObjects():
+        # the_lw.WriteFullline(f'Committed object: {item.JournalIdentifier} of type {type(item)}')
+        if type(item) is NXOpen.DatumAxis:
+            axis.append(item)
+    
+    return axis
+
+
+def create_datum_axis(vector: NXOpen.Vector3d, point: NXOpen.Point3d=None, work_part: NXOpen.Part=None) -> NXOpen.Features.DatumAxisFeature:
+    '''
+    Create a datum axis. through a point with a given vector.
+
+    Parameters
+    ----------
+    vector : NXOpen.Vector3d
+        The vector of the axis.
+    point : NXOpen.Point3d, optional
+        The point through which the axis should go. Defaults to the origin.
+    work_part : NXOpen.Part, optional
+        The part in which to create the datum axis. Defaults to work part.
+
+    Returns
+    -------
+    NXOpen.Features.DatumAxisFeature
+        The created datum axis feature, from which the datum axis can be retrieved.
+
+    NOTES
+    -----
+    '''
+    if work_part is None:
+        work_part = the_session.Parts.Work
+
+    datum_axis_builder = work_part.Features.CreateDatumAxisBuilder(NXOpen.Features.Feature.Null)
+    if point is None:
+        origin_1 = NXOpen.Point3d(0.0, 0.0, 0.0)
+    else:
+        origin_1 = point
+
+    direction_1 = work_part.Directions.CreateDirection(origin_1, vector, NXOpen.SmartObject.UpdateOption.WithinModeling)
+    
+    datum_axis_builder.Point = work_part.Points.CreatePoint(origin_1)
+    datum_axis_builder.Vector = direction_1
+    
+    datum_axis = datum_axis_builder.Commit()
+    datum_axis_builder.Destroy()
+
+    return datum_axis
+
+
+def create_bisector_datum_plane(datum_plane1: NXOpen.DatumPlane, datum_plane2: NXOpen.DatumPlane, work_part: NXOpen.Part=None) -> NXOpen.Features.DatumPlaneFeature:
+    '''
+    Create a datum plane bisecting two datum planes.
+
+    Parameters
+    ----------
+    datum_plane1 : NXOpen.DatumPlane
+        The first datum plane.
+    datum_plane2 : NXOpen.DatumPlane
+        The second datum plane.
+    work_part : NXOpen.Part, optional
+        The part in which to create the datum plane. Defaults to work part.
+
+    Returns
+    -------
+    NXOpen.Features.DatumPlaneFeature
+        The created datum plane feature, from which the datum plane can be retrieved.
+
+    NOTES
+    -----
+    '''
+    if work_part is None:
+        work_part = the_session.Parts.Work
+
+    datum_plane_builder = work_part.Features.CreateDatumPlaneBuilder(NXOpen.Features.Feature.Null)
+    plane = datum_plane_builder.GetPlane()
+    plane.SetUpdateOption(NXOpen.SmartObject.UpdateOption.WithinModeling)
+    plane.SetMethod(NXOpen.PlaneTypes.MethodType.Center)
+    
+    geom = [NXOpen.NXObject.Null] * 2 
+    geom[0] = datum_plane1
+    geom[1] = datum_plane2
+    plane.SetGeometry(geom)
+    
+    plane.SetAlternate(NXOpen.PlaneTypes.AlternateType.One)
+    plane.Evaluate()
+    plane.RemoveOffsetData()
+    plane.Evaluate()
+    
+    datum_plane_builder.ResizeDuringUpdate = True
+    
+    datum_plane_feature = datum_plane_builder.CommitFeature()
+    datum_plane_builder.Destroy()
+
+    return datum_plane_feature
+
+
+def bisector_multiple_planes(planes: List[NXOpen.Features.DatumPlaneFeature]) -> List[NXOpen.Features.DatumPlaneFeature]:
+    '''
+    Create bisector planes between each pair of planes in the list.
+
+    Parameters
+    ----------
+    planes : List[NXOpen.Features.DatumPlaneFeature]
+        The list of datum planes.
+
+    Returns
+    -------
+    List[NXOpen.Features.DatumPlaneFeature]
+        The list of datum plane features, from which the datum planes can be retrieved.
+
+    NOTES
+    -----
+    '''
+    new_planes: List[NXOpen.DatumPlane] = []
+    for i in range(len(planes) - 1):
+        new_planes.append(create_bisector_datum_plane(planes[i].DatumPlane, planes[i + 1].DatumPlane))
+    
+    return_planes = [item for item in planes]
+    for i in range(len(new_planes)):
+        return_planes.insert(2 * i + 1, new_planes[i])
+    
+    return return_planes

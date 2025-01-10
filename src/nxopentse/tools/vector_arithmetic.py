@@ -3,6 +3,7 @@ import NXOpen.UF
 import NXOpen.CAE
 from typing import List, cast, Optional, Union
 
+import math
 
 def cross_product_vector3d(vector1: NXOpen.Vector3d, vector2: NXOpen.Vector3d) -> NXOpen.Vector3d:
     """
@@ -51,3 +52,23 @@ def dot_product_vector3d(vector1: NXOpen.Vector3d, vector2: NXOpen.Vector3d) -> 
     Tested in SC2306
     """
     return vector1.X * vector2.X + vector1.Y * vector2.Y + vector1.Z * vector2.Z
+
+
+def get_angle_between_vectors(vector1: NXOpen.Vector3d, vector2: NXOpen.Vector3d) -> float:
+    '''
+    Calculate the angle between two vectors (radians).
+
+    Parameters
+    ----------
+    vector1 (NXOpen.Vector3d): 
+        The first vector.
+    vector2 (NXOpen.Vector3d):
+        The second vector.
+
+    Returns
+    -------
+    float:
+        The angle between the two vectors in radians.
+    '''
+    angle: float = math.acos(dot_product_vector3d(vector1, vector2))
+    return angle * 180 / 3.14159265358979323846
