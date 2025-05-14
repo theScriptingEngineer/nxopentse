@@ -209,7 +209,6 @@ def check_post_input(post_inputs: List[PostInput]) -> None:
     post_inputs: List[PostInput]
         The array of PostInput to check.
     """
-    return
     for i in range(len(post_inputs)):
         # Does the solution exist?
         sim_solution: NXOpen.CAE.SimSolution = get_solution(post_inputs[i]._solution)

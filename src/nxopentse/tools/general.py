@@ -1,5 +1,5 @@
 import os
-from typing import List, cast
+from typing import List, cast, Union
 
 import NXOpen
 import NXOpen.Assemblies
@@ -13,7 +13,8 @@ the_lw: NXOpen.ListingWindow = the_session.ListingWindow
 
 
 def create_full_path(file_name: str, extension: str = ".unv") -> str:
-    '''This function takes a filename and adds the .unv extension and path of the part if not provided by the user.
+    '''
+    This function takes a filename and adds the .unv extension and path of the part if not provided by the user.
     If the fileName contains an extension, this function leaves it untouched, othwerwise adds .unv as extension.
     If the fileName contains a path, this function leaves it untouched, otherwise adds the path of the BasePart as the path.
     Undefined behaviour if basePart has not yet been saved (eg FullPath not available)
@@ -28,7 +29,6 @@ def create_full_path(file_name: str, extension: str = ".unv") -> str:
     str
         A string with .unv extension and path of the basePart if the fileName parameter did not include a path.
     '''
-
     # TODO: check if base_part is not None, otherwise error
 
     base_part: NXOpen.BasePart = the_session.Parts.BaseWork
@@ -156,7 +156,11 @@ def print_part_tree(base_part: NXOpen.BasePart, requested_level: int = 0) -> Non
             print_part_tree(children[i].Prototype.OwningPart, level + 1)
 
 
-def create_string_attribute(nx_object: NXOpen.NXObject, title: str, value: str, work_part: NXOpen.BasePart=None) -> None:
+def create_string_attribute(nx_object: NXOpen.NXObject, 
+                            title: str, 
+                            value: str, 
+                            work_part: NXOpen.BasePart=None # type: ignore
+                            ) -> None:
     if work_part is None:
         work_part = the_session.Parts.BaseWork
     objects1 = [NXOpen.NXObject.Null] * 1 
@@ -181,7 +185,9 @@ def create_string_attribute(nx_object: NXOpen.NXObject, title: str, value: str, 
     attributePropertiesBuilder1.Destroy()    
 
 
-def show_only(objects: List[NXOpen.DisplayableObject], base_part: NXOpen.BasePart=None) -> None:
+def show_only(objects: List[NXOpen.DisplayableObject], 
+              base_part: NXOpen.BasePart=None # type: ignore
+              ) -> None:
     """
     Show only the specified objects.
 
@@ -205,7 +211,10 @@ def show_only(objects: List[NXOpen.DisplayableObject], base_part: NXOpen.BasePar
         item.Unblank()
 
 
-def move_object_to_layer(object: NXOpen.DisplayableObject, layer: int, work_part: NXOpen.Part=None):
+def move_object_to_layer(object: NXOpen.DisplayableObject, 
+                         layer: int, 
+                         work_part: NXOpen.Part=None # type: ignore
+                         ) -> None:
     ''' 
     Move a displayable object to a specified layer.
 
@@ -253,3 +262,44 @@ def color_object(displayable_object: NXOpen.DisplayableObject, color: int = 42) 
     nErrs1 = the_session.UpdateManager.DoUpdate(markId4)
     
     display_modification.Dispose()
+
+
+def get_expression_by_name(name: str, 
+                           work_part: NXOpen.Part = None # type: ignore
+                           ) -> Union[NXOpen.Expression, None]:
+    '''
+    Get the expression object by it's name.
+
+    Parameters
+    ----------
+    name: str
+        The name of the expression to retrieve, case insensitive
+    work_part : NXOpen.Part, optional
+        The part to move the object in. Defaults to the work part.
+
+    Returns
+    -------
+    NXOpen.Expression or None
+        The found expression if exactly one match exists, None if no match is found.
+    
+    Raises
+    ------
+    ValueError
+        If multiple expressions with the given name are found.
+    
+    Notes
+    -----
+    The search is case-insensitive. The function performs an exact match on the expression name.
+    '''
+    if work_part is None:
+        work_part = the_session.Parts.Work
+
+    expressions: List[NXOpen.Expression] = [exp for exp in work_part.Expressions] # type: ignore
+    expression: List[NXOpen.Expression] = [item for item in expressions if item.Name.lower() == name.lower()]
+    if len(expression) == 0:
+        return None
+    elif len(expression) == 1:
+        return expression[0]
+    else:
+        # something wrong
+        raise ValueError(f'Found {len(expression)} with name {name}')

@@ -11,4 +11,7 @@ from .general import create_full_path, \
 
 from .vector_arithmetic import cross_product_vector3d, \
                                 dot_product_vector3d,\
-                                get_angle_between_vectors
+                                get_angle_between_vectors, \
+                                create_vector, \
+                                distance_between_points, \
+                                get_closest_point

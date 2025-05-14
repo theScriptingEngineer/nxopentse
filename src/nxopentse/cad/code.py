@@ -1,11 +1,13 @@
 import os
 import math
-from typing import List, Tuple, Optional, cast
+from typing import List, Tuple, Optional, cast, Union
 
 import NXOpen
 import NXOpen.Features
 import NXOpen.GeometricUtilities
 import NXOpen.Assemblies
+
+from ..tools.vector_arithmetic import dot_product_vector3d
 
 the_session: NXOpen.Session = NXOpen.Session.GetSession()
 the_lw: NXOpen.ListingWindow = the_session.ListingWindow
@@ -19,7 +21,8 @@ def nx_hello():
     the_lw.WriteFullline("Hello from " + os.path.basename(__file__))
 
 
-def get_all_bodies_in_part(work_part: NXOpen.Part=None) -> List[NXOpen.Body]:
+def get_all_bodies_in_part(work_part: NXOpen.Part=None # type: ignore
+                           ) -> List[NXOpen.Body]:
     """
     Get all the bodies in the work part.
 
@@ -97,7 +100,9 @@ def get_faces_of_type(body: NXOpen.Body, face_type: NXOpen.Face.FaceType) -> Lis
     return faces_of_type
 
 
-def get_face_properties(face: NXOpen.Face, work_part: NXOpen.Part=None) -> Tuple[float, float, float, NXOpen.Point3d, float, float, NXOpen.Point3d, bool]:
+def get_face_properties(face: NXOpen.Face, 
+                        work_part: NXOpen.Part=None # type: ignore
+                        ) -> Tuple[float, float, float, NXOpen.Point3d, float, float, NXOpen.Point3d, bool]:
     '''
     Get the properties of a face.
 
@@ -148,7 +153,7 @@ def get_face_properties(face: NXOpen.Face, work_part: NXOpen.Part=None) -> Tuple
     selectionIntentRuleOptions1.Dispose()
     rules1 = [None] * 1 
     rules1[0] = faceDumbRule1
-    sc_collector_1.ReplaceRules(rules1, False)
+    sc_collector_1.ReplaceRules(rules1, False) # type: ignore
     
     work_part.MeasureManager.SetPartTransientModification()
     
@@ -158,7 +163,7 @@ def get_face_properties(face: NXOpen.Face, work_part: NXOpen.Part=None) -> Tuple
     faceaccuracy1 = measure_prefs_builder.FaceAccuracy
     work_part.MeasureManager.ClearPartTransientModification()
     
-    faces = [NXOpen.ISurface.Null] * 1 
+    faces = [NXOpen.ISurface.Null] * 1  # type: ignore
     faces[0] = face
     area, perimeter, radiusdiameter, cog, minradiusofcurvature, areaerrorestimate, anchorpoint, isapproximate = the_session.Measurement.GetFaceProperties(faces, 0.98999999999999999, NXOpen.Measurement.AlternateFace.Radius, True)
     
@@ -174,7 +179,8 @@ def get_face_properties(face: NXOpen.Face, work_part: NXOpen.Part=None) -> Tuple
     return area, perimeter, radiusdiameter, cog, minradiusofcurvature, areaerrorestimate, anchorpoint, isapproximate
 
 
-def get_all_points(work_part: NXOpen.Part=None) -> List[NXOpen.Point]:
+def get_all_points(work_part: NXOpen.Part=None # type: ignore
+                   ) -> List[NXOpen.Point]:
     """
     Get all the points in the work part.
 
@@ -196,7 +202,8 @@ def get_all_points(work_part: NXOpen.Part=None) -> List[NXOpen.Point]:
     return all_points
 
 
-def get_all_features(work_part: NXOpen.Part=None) -> List[NXOpen.Features.Feature]:
+def get_all_features(work_part: NXOpen.Part=None # type: ignore
+                     ) -> List[NXOpen.Features.Feature]:
     """
     Get all the features in the work part.
 
@@ -218,7 +225,9 @@ def get_all_features(work_part: NXOpen.Part=None) -> List[NXOpen.Features.Featur
     return all_features
 
 
-def get_features_of_type(feature_type: type, work_part: NXOpen.Part=None) -> List[NXOpen.Features.Feature]:
+def get_features_of_type(feature_type: type, 
+                         work_part: NXOpen.Part=None # type: ignore
+                         ) -> List[NXOpen.Features.Feature]:
     """
     Get all the features of a specified type in the work part.
 
@@ -248,7 +257,9 @@ def get_features_of_type(feature_type: type, work_part: NXOpen.Part=None) -> Lis
     return features
 
 
-def get_feature_by_name(name: str, work_part: NXOpen.Part=None) -> Optional[List[NXOpen.Features.Feature]]:
+def get_feature_by_name(name: str, 
+                        work_part: NXOpen.Part=None # type: ignore
+                        ) -> Optional[List[NXOpen.Features.Feature]]:
     """
     Get features with the specified name.
 
@@ -274,7 +285,8 @@ def get_feature_by_name(name: str, work_part: NXOpen.Part=None) -> Optional[List
     return features
 
 
-def get_all_point_features(work_part: NXOpen.Part=None) -> List[NXOpen.Features.PointFeature]:
+def get_all_point_features(work_part: NXOpen.Part=None # type: ignore
+                           ) -> List[NXOpen.Features.PointFeature]:
     """
     Get all the point features in the work part.
 
@@ -299,7 +311,9 @@ def get_all_point_features(work_part: NXOpen.Part=None) -> List[NXOpen.Features.
     return all_point_features
 
 
-def get_point_with_feature_name(name: str, work_part: NXOpen.Part=None) -> Optional[NXOpen.Point]:
+def get_point_with_feature_name(name: str, 
+                                work_part: NXOpen.Part=None # type: ignore
+                                ) -> Optional[NXOpen.Point]:
     """
     Get the point associated with the feature name.
 
@@ -331,7 +345,12 @@ def get_point_with_feature_name(name: str, work_part: NXOpen.Part=None) -> Optio
     return None
 
 
-def create_cylinder_between_two_points(point1: NXOpen.Point, point2: NXOpen.Point, diameter: float, length: float, work_part: NXOpen.Part=None) -> NXOpen.Features.Cylinder:
+def create_cylinder_between_two_points(point1: NXOpen.Point, 
+                                       point2: NXOpen.Point, 
+                                       diameter: float, 
+                                       length: float, 
+                                       work_part: NXOpen.Part=None # type: ignore
+                                       ) -> NXOpen.Features.Cylinder:
     """
     Create a cylinder between two points.
 
@@ -380,7 +399,10 @@ def create_cylinder_between_two_points(point1: NXOpen.Point, point2: NXOpen.Poin
     return cylinder_feature
 
 
-def create_intersect_feature(body1: NXOpen.Body, body2: NXOpen.Body, work_part: NXOpen.Part=None) -> NXOpen.Features.BooleanFeature:
+def create_intersect_feature(body1: NXOpen.Body, 
+                             body2: NXOpen.Body, 
+                             work_part: NXOpen.Part=None # type: ignore
+                             ) -> NXOpen.Features.BooleanFeature:
     """
     Create an intersect feature between two bodies.
 
@@ -499,7 +521,86 @@ def get_faces_with_color(body: NXOpen.Body, color: int) -> List[NXOpen.Face]:
     return colored_faces
 
 
-def get_area_faces_with_color(bodies: List[NXOpen.Body], color: int, work_part: NXOpen.Part=None) -> float:
+def get_smallest_face(faces: List[NXOpen.Face], 
+                      work_part: NXOpen.Part=None # type: ignore
+                      ) -> NXOpen.Face:
+    """
+    Get the smallest face from a list of faces.
+
+    Parameters
+    ----------
+    faces : List[NXOpen.Face]
+        A list of faces.
+
+    Returns
+    -------
+    NXOpen.Face
+        The smallest face.
+
+    NOTES
+    -----
+    Tested in Simcenter 2212
+    """
+    if work_part is None:
+        work_part = the_session.Parts.Work
+    
+    area_unit: NXOpen.Unit = work_part.UnitCollection.FindObject("SquareMilliMeter")
+    length_unit: NXOpen.Unit = work_part.UnitCollection.FindObject("MilliMeter")
+    
+    smallest_face: NXOpen.Face = faces[0]
+    smallest_face_area: float = work_part.MeasureManager.NewFaceProperties(area_unit, length_unit, 0.99, [faces[0]]).Area
+    
+    for face in faces:
+        area2 = work_part.MeasureManager.NewFaceProperties(area_unit, length_unit, 0.99, [face]).Area
+        if area2 < smallest_face_area:
+            smallest_face = face
+            smallest_face_area = area2
+    
+    return smallest_face
+
+
+def get_largest_face(faces: List[NXOpen.Face], 
+                     work_part: NXOpen.Part=None # type: ignore
+                     ) -> NXOpen.Face:
+    """
+    Get the largest face from a list of faces.
+
+    Parameters
+    ----------
+    faces : List[NXOpen.Face]
+        A list of faces.
+
+    Returns
+    -------
+    NXOpen.Face
+        The largest face.
+
+    NOTES
+    -----
+    Tested in NX2412
+    """
+    if work_part is None:
+        work_part = the_session.Parts.Work
+    
+    area_unit: NXOpen.Unit = work_part.UnitCollection.FindObject("SquareMilliMeter")
+    length_unit: NXOpen.Unit = work_part.UnitCollection.FindObject("MilliMeter")
+    
+    largest_face: NXOpen.Face = faces[0]
+    largest_face_area: float = work_part.MeasureManager.NewFaceProperties(area_unit, length_unit, 0.99, [faces[0]]).Area
+    
+    for face in faces:
+        area2 = work_part.MeasureManager.NewFaceProperties(area_unit, length_unit, 0.99, [face]).Area
+        if area2 > largest_face_area:
+            largest_face = face
+            largest_face_area = area2
+    
+    return largest_face
+
+
+def get_area_faces_with_color(bodies: List[NXOpen.Body], 
+                              color: int, 
+                              work_part: NXOpen.Part=None # type: ignore
+                              ) -> float:
     """
     Get the total area of faces with a specific color in a list of bodies.
 
@@ -530,7 +631,11 @@ def get_area_faces_with_color(bodies: List[NXOpen.Body], color: int, work_part: 
     return area
 
 
-def create_point(x_co: float, y_co: float, z_co: float, work_part: NXOpen.Part=None) -> NXOpen.Features.PointFeature:
+def create_point(x_co: float, 
+                 y_co: float, 
+                 z_co: float, 
+                 work_part: NXOpen.Part=None # type: ignore
+                 ) -> NXOpen.Features.PointFeature:
     """
     Creates an point at the specified coordinates.
 
@@ -559,14 +664,14 @@ def create_point(x_co: float, y_co: float, z_co: float, work_part: NXOpen.Part=N
 
     unit_milli_meter = work_part.UnitCollection.FindObject("MilliMeter")
     expression_x = work_part.Expressions.CreateSystemExpressionWithUnits(str(x_co), unit_milli_meter)
-    scalar_x = work_part.Scalars.CreateScalarExpression(expression_x, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling)
+    scalar_x = work_part.Scalars.CreateScalarExpression(expression_x, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling) # type: ignore
     expression_y = work_part.Expressions.CreateSystemExpressionWithUnits(str(y_co), unit_milli_meter)
-    scalar_y = work_part.Scalars.CreateScalarExpression(expression_y, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling)
+    scalar_y = work_part.Scalars.CreateScalarExpression(expression_y, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling) # type: ignore
     expression_z = work_part.Expressions.CreateSystemExpressionWithUnits(str(z_co), unit_milli_meter)
-    scalar_z = work_part.Scalars.CreateScalarExpression(expression_z, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling)
+    scalar_z = work_part.Scalars.CreateScalarExpression(expression_z, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling) # type: ignore
 
 
-    point2 = work_part.Points.CreatePoint(scalar_x, scalar_y, scalar_z, NXOpen.SmartObject.UpdateOption.WithinModeling)
+    point2 = work_part.Points.CreatePoint(scalar_x, scalar_y, scalar_z, NXOpen.SmartObject.UpdateOption.WithinModeling) # type: ignore
     point2.SetVisibility(NXOpen.SmartObject.VisibilityOption.Visible)
     
     point_feature_builder = work_part.BaseFeatures.CreatePointFeatureBuilder(NXOpen.Features.Feature.Null)
@@ -578,7 +683,108 @@ def create_point(x_co: float, y_co: float, z_co: float, work_part: NXOpen.Part=N
     return point_feature
 
 
-def create_line_between_two_points(point1: NXOpen.Point, point2: NXOpen.Point, work_part: NXOpen.Part=None) -> NXOpen.Features.AssociativeLine:
+def create_non_timestamp_point(x_co: float, 
+                               y_co: float, 
+                               z_co: float, 
+                               color: int = 134, 
+                               work_part: NXOpen.Part=None # type: ignore
+                               ) -> NXOpen.Point:
+    """
+    Create a point at the specified coordinates.
+
+    Parameters
+    ----------
+    base_part : NXOpen.BasePart
+        The base part where the point will be created.
+    x_co : float
+        The x-coordinate of the point.
+    y_co : float
+        The y-coordinate of the point.
+    z_co : float
+        The z-coordinate of the point.
+    color : int, optional
+        The color to give the point.
+    work_part : NXOpen.Part, optional
+        The part in which to create the point. Defaults to work part.
+        
+    Returns
+    -------
+    NXOpen.Point3d
+        The created point.
+    """
+    if work_part is None:
+        work_part = the_session.Parts.Work
+    unit_mm: NXOpen.Unit = work_part.UnitCollection.FindObject("Millimeter")
+    exp_x: NXOpen.Expression = work_part.Expressions.CreateSystemExpressionWithUnits(str(x_co), unit_mm)
+    exp_y: NXOpen.Expression = work_part.Expressions.CreateSystemExpressionWithUnits(str(y_co), unit_mm)
+    exp_z: NXOpen.Expression = work_part.Expressions.CreateSystemExpressionWithUnits(str(z_co), unit_mm)
+
+    scalar_x: NXOpen.Scalar = work_part.Scalars.CreateScalarExpression(exp_x, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling) # type: ignore
+    scalar_y: NXOpen.Scalar = work_part.Scalars.CreateScalarExpression(exp_y, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling) # type: ignore
+    scalar_z: NXOpen.Scalar = work_part.Scalars.CreateScalarExpression(exp_z, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling) # type: ignore
+
+    point: NXOpen.Point = work_part.Points.CreatePoint(scalar_x, scalar_y, scalar_z, NXOpen.SmartObject.UpdateOption.WithinModeling) # type: ignore
+    point.Color = color
+    point.SetVisibility(NXOpen.SmartObject.VisibilityOption.Visible)
+    undo_mark = the_session.SetUndoMark(NXOpen.Session.MarkVisibility.Visible, "Point")
+    the_session.UpdateManager.DoUpdate(undo_mark)
+
+    return point
+
+
+def create_non_timestamp_points(coordinates: List[List[float]], 
+                                color: int = 134, 
+                                work_part: NXOpen.Part=None # type: ignore
+                                ) -> List[NXOpen.Point]:
+    """
+    Create points at the specified coordinates.
+
+    Parameters
+    ----------
+    coordinates : List[List[float]]
+        A list with coordinates. Each coordinate is a list with three floats.
+    color : int, optional
+        The color to give the point.
+    work_part : NXOpen.Part, optional
+        The part in which to create the point. Defaults to work part.
+        
+    Returns
+    -------
+    List[NXOpen.Point3d]
+        The created points.
+
+    NOTES
+    -----
+    This function is much faster than looping over create_point() for each point, because it only updates the part once, after all points are created.
+    Tested in Simcenter 2312
+    """
+    if work_part is None:
+        work_part = the_session.Parts.Work
+    unit_mm: NXOpen.Unit = work_part.UnitCollection.FindObject("Millimeter")
+    points: List[NXOpen.Point] = [NXOpen.Point] * len(coordinates) # type: ignore
+    for i in range(len(coordinates)):
+        exp_x: NXOpen.Expression = work_part.Expressions.CreateSystemExpressionWithUnits(str(coordinates[i][0]), unit_mm)
+        exp_y: NXOpen.Expression = work_part.Expressions.CreateSystemExpressionWithUnits(str(coordinates[i][1]), unit_mm)
+        exp_z: NXOpen.Expression = work_part.Expressions.CreateSystemExpressionWithUnits(str(coordinates[i][2]), unit_mm)
+
+        scalar_x: NXOpen.Scalar = work_part.Scalars.CreateScalarExpression(exp_x, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.AfterModeling) # type: ignore
+        scalar_y: NXOpen.Scalar = work_part.Scalars.CreateScalarExpression(exp_y, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.AfterModeling) # type: ignore
+        scalar_z: NXOpen.Scalar = work_part.Scalars.CreateScalarExpression(exp_z, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.AfterModeling) # type: ignore
+
+        point: NXOpen.Point = work_part.Points.CreatePoint(scalar_x, scalar_y, scalar_z, NXOpen.SmartObject.UpdateOption.AfterModeling) # type: ignore
+        point.Color = color
+        point.SetVisibility(NXOpen.SmartObject.VisibilityOption.Visible)
+        points[i] = point
+    undo_mark = the_session.SetUndoMark(NXOpen.Session.MarkVisibility.Visible, "Point")
+    the_session.UpdateManager.DoUpdate(undo_mark)
+
+    return points
+
+
+def create_line_between_two_points(point1: NXOpen.Point, 
+                                   point2: NXOpen.Point, 
+                                   work_part: NXOpen.Part=None # type: ignore
+                                   ) -> NXOpen.Features.AssociativeLine:
     """
     Create a line between two points.
 
@@ -626,7 +832,9 @@ def create_line_between_two_points(point1: NXOpen.Point, point2: NXOpen.Point, w
     return cast(NXOpen.Features.AssociativeLine, associative_line_feature)
 
 
-def create_spline_through_points(points: List[NXOpen.Point], work_part: NXOpen.Part=None) -> NXOpen.Features.StudioSpline:
+def create_spline_through_points(points: List[NXOpen.Point], 
+                                 work_part: NXOpen.Part=None # type: ignore
+                                 ) -> NXOpen.Features.StudioSpline:
     '''
     Create a spline through the given points.
 
@@ -653,7 +861,7 @@ def create_spline_through_points(points: List[NXOpen.Point], work_part: NXOpen.P
 
     for point in points:
         coordinates1 = NXOpen.Point3d(point.Coordinates.X, point.Coordinates.Y, point.Coordinates.Z)
-        point1 = work_part.Points.CreatePoint(coordinates1)
+        point1 = work_part.Points.CreatePoint(coordinates1) # type: ignore
         geometric_constraint_data = studio_spline_builder_ex.ConstraintManager.CreateGeometricConstraintData()
         geometric_constraint_data.Point = point1
         studio_spline_builder_ex.ConstraintManager.Append(geometric_constraint_data)
@@ -778,15 +986,15 @@ def create_bounding_box(workPart: NXOpen.Part, bodies: List[NXOpen.Body], sheet_
         listRules.append(bodyDumbRule)
 
         scCollector = toolingBoxBuilder.BoundedObject
-        scCollector.ReplaceRules(listRules, False)
+        scCollector.ReplaceRules(listRules, False) # type: ignore
 
         deselections1 = []
-        toolingBoxBuilder.SetSelectedOccurrences(tempBodies, deselections1)
+        toolingBoxBuilder.SetSelectedOccurrences(tempBodies, deselections1) # type: ignore
 
         # Ensure no internal errors when saving
         selectNXObjectList = toolingBoxBuilder.FacetBodies
         empty = []
-        selectNXObjectList.Add(empty)
+        selectNXObjectList.Add(empty) # type: ignore
 
         toolingBoxBuilder.CalculateBoxSize()
 
@@ -797,7 +1005,10 @@ def create_bounding_box(workPart: NXOpen.Part, bodies: List[NXOpen.Body], sheet_
     return boundingBox
 
 
-def trim_body_with_plane(body: NXOpen.Body, plane: NXOpen.DatumPlane, work_part: NXOpen.Part=None) -> NXOpen.Features.TrimBody:
+def trim_body_with_plane(body: NXOpen.Body, 
+                         plane: NXOpen.DatumPlane, 
+                         work_part: NXOpen.Part=None # type: ignore
+                         ) -> NXOpen.Features.TrimBody:
     if work_part is None:
         work_part = the_session.Parts.Work
     trim_body_2_builder = work_part.Features.CreateTrimBody2Builder(NXOpen.Features.TrimBody2.Null)
@@ -813,7 +1024,7 @@ def trim_body_with_plane(body: NXOpen.Body, plane: NXOpen.DatumPlane, work_part:
     selectionIntentRuleOptions1.Dispose()
     rules1 = [None] * 1 
     rules1[0] = bodyFeatureRule1
-    scCollector1.ReplaceRules(rules1, False)
+    scCollector1.ReplaceRules(rules1, False) # type: ignore
     
     trim_body_2_builder.TargetBodyCollector = scCollector1
 
@@ -833,7 +1044,9 @@ def trim_body_with_plane(body: NXOpen.Body, plane: NXOpen.DatumPlane, work_part:
     return trim_body_feature
 
 
-def create_datum_plane_on_planar_face(face: NXOpen.Face, work_part: NXOpen.Part=None) -> NXOpen.Features.DatumPlaneFeature:
+def create_datum_plane_on_planar_face(face: NXOpen.Face, 
+                                      work_part: NXOpen.Part=None # type: ignore
+                                      ) -> NXOpen.Features.DatumPlaneFeature:
     '''
     Create a datum plane on a planar face.
 
@@ -860,9 +1073,9 @@ def create_datum_plane_on_planar_face(face: NXOpen.Face, work_part: NXOpen.Part=
     plane.SetMethod(NXOpen.PlaneTypes.MethodType.Point)
     plane.SetUpdateOption(NXOpen.SmartObject.UpdateOption.WithinModeling)
 
-    scalar1 = work_part.Scalars.CreateScalar(0.5, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling)
-    scalar2 = work_part.Scalars.CreateScalar(0.5, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling)
-    point = work_part.Points.CreatePoint(face, scalar1, scalar2, NXOpen.SmartObject.UpdateOption.WithinModeling)
+    scalar1 = work_part.Scalars.CreateScalar(0.5, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling) # type: ignore
+    scalar2 = work_part.Scalars.CreateScalar(0.5, NXOpen.Scalar.DimensionalityType.NotSet, NXOpen.SmartObject.UpdateOption.WithinModeling) # type: ignore
+    point = work_part.Points.CreatePoint(face, scalar1, scalar2, NXOpen.SmartObject.UpdateOption.WithinModeling) # type: ignore
     
     geom = [NXOpen.NXObject.Null] * 1 
     geom[0] = point
@@ -879,7 +1092,9 @@ def create_datum_plane_on_planar_face(face: NXOpen.Face, work_part: NXOpen.Part=
     return datum_plane_feature
 
 
-def get_axes_of_coordinate_system(coordinate_system_feature: NXOpen.Features.DatumCsys, work_part: NXOpen.Part=None) -> List[NXOpen.DatumAxis]:
+def get_axes_of_coordinate_system(coordinate_system_feature: NXOpen.Features.DatumCsys, 
+                                  work_part: NXOpen.Part=None # type: ignore
+                                  ) -> List[NXOpen.DatumAxis]:
     '''
     Get the axes of a coordinate system.
 
@@ -910,7 +1125,10 @@ def get_axes_of_coordinate_system(coordinate_system_feature: NXOpen.Features.Dat
     return axis
 
 
-def create_datum_axis(vector: NXOpen.Vector3d, point: NXOpen.Point3d=None, work_part: NXOpen.Part=None) -> NXOpen.Features.DatumAxisFeature:
+def create_datum_axis(vector: NXOpen.Vector3d, 
+                      point: NXOpen.Point3d=None,  # type: ignore
+                      work_part: NXOpen.Part=None # type: ignore
+                      ) -> NXOpen.Features.DatumAxisFeature:
     '''
     Create a datum axis. through a point with a given vector.
 
@@ -940,9 +1158,9 @@ def create_datum_axis(vector: NXOpen.Vector3d, point: NXOpen.Point3d=None, work_
     else:
         origin_1 = point
 
-    direction_1 = work_part.Directions.CreateDirection(origin_1, vector, NXOpen.SmartObject.UpdateOption.WithinModeling)
+    direction_1 = work_part.Directions.CreateDirection(origin_1, vector, NXOpen.SmartObject.UpdateOption.WithinModeling) # type: ignore
     
-    datum_axis_builder.Point = work_part.Points.CreatePoint(origin_1)
+    datum_axis_builder.Point = work_part.Points.CreatePoint(origin_1) # type: ignore
     datum_axis_builder.Vector = direction_1
     
     datum_axis = datum_axis_builder.Commit()
@@ -951,7 +1169,10 @@ def create_datum_axis(vector: NXOpen.Vector3d, point: NXOpen.Point3d=None, work_
     return datum_axis
 
 
-def create_bisector_datum_plane(datum_plane1: NXOpen.DatumPlane, datum_plane2: NXOpen.DatumPlane, work_part: NXOpen.Part=None) -> NXOpen.Features.DatumPlaneFeature:
+def create_bisector_datum_plane(datum_plane1: NXOpen.DatumPlane, 
+                                datum_plane2: NXOpen.DatumPlane, 
+                                work_part: NXOpen.Part=None # type: ignore
+                                ) -> NXOpen.Features.DatumPlaneFeature:
     '''
     Create a datum plane bisecting two datum planes.
 
@@ -1024,3 +1245,509 @@ def bisector_multiple_planes(planes: List[NXOpen.Features.DatumPlaneFeature]) ->
         return_planes.insert(2 * i + 1, new_planes[i])
     
     return return_planes
+
+
+def split_body_with_planes(body: NXOpen.Body, 
+                           planes: List[NXOpen.Features.DatumPlaneFeature], 
+                           work_part: NXOpen.Part=None # type: ignore
+                           ) -> NXOpen.Features.SplitBody:
+    """
+    Split a body using multiple datum plane features.
+    
+    Creates a split body feature that divides the target body along the specified datum planes.
+    
+    Parameters
+    ----------
+    body : NXOpen.Body
+        The body to be split.
+    planes : List[NXOpen.Features.DatumPlaneFeature]
+        List of datum plane features to use as cutting tools.
+    work_part : NXOpen.Part, optional
+        The part in which to perform the operation. If None, uses the current work part.
+    
+    Returns
+    -------
+    NXOpen.Features.SplitBody
+        The created split body feature.
+    
+    Notes
+    -----
+    The function extracts the DatumPlane objects from the provided DatumPlaneFeature objects
+    and uses them as cutting tools. The function creates and configures the necessary 
+    selection collectors for both the target body and the cutting planes.
+    """
+    if work_part is None:
+        work_part = the_session.Parts.Work
+
+    split_body_builder = work_part.Features.CreateSplitBodyBuilder(NXOpen.Features.SplitBody.Null)
+
+    scCollector1 = work_part.ScCollectors.CreateCollector()
+    
+    selectionIntentRuleOptions1 = work_part.ScRuleFactory.CreateRuleOptions()
+    
+    selectionIntentRuleOptions1.SetSelectedFromInactive(False)
+    
+    bodies1 = [NXOpen.Body.Null] * 1 
+    bodies1[0] = body
+    bodyDumbRule1 = work_part.ScRuleFactory.CreateRuleBodyDumb(bodies1, True, selectionIntentRuleOptions1)
+    
+    selectionIntentRuleOptions1.Dispose()
+    rules1 = [None] * 1 
+    rules1[0] = bodyDumbRule1
+    scCollector1.ReplaceRules(rules1, False) # type: ignore
+    
+    split_body_builder.TargetBodyCollector = scCollector1
+
+    datum_planes = []
+    for plane in planes:
+        datum_planes.append(plane.DatumPlane)
+
+    selectionIntentRuleOptions2 = work_part.ScRuleFactory.CreateRuleOptions()
+    selectionIntentRuleOptions2.SetSelectedFromInactive(False)
+
+    faceDumbRule1 = work_part.ScRuleFactory.CreateRuleFaceDatum(datum_planes, selectionIntentRuleOptions2)
+    
+    selectionIntentRuleOptions2.Dispose()
+    rules2 = [None] * 1 
+    rules2[0] = faceDumbRule1
+    split_body_builder.BooleanTool.FacePlaneTool.ToolFaces.FaceCollector.ReplaceRules(rules2, False)
+    
+    selectionIntentRuleOptions3 = work_part.ScRuleFactory.CreateRuleOptions()
+    
+    selectionIntentRuleOptions3.SetSelectedFromInactive(False)
+
+    split_body_feature = split_body_builder.Commit()
+    split_body_builder.Destroy()
+
+    return split_body_feature
+
+
+def create_datum_at_distance(plane: NXOpen.DatumPlane, 
+                             distance: float, 
+                             work_part: NXOpen.Part=None # type: ignore
+                             ) -> NXOpen.Features.DatumPlaneFeature:
+    """
+    Create a new datum plane at a specified distance from an existing datum plane.
+    
+    Parameters
+    ----------
+    plane : NXOpen.DatumPlane
+        The reference datum plane from which to create the offset plane.
+    distance : float
+        The distance at which to create the new datum plane from the reference plane.
+    work_part : NXOpen.Part, optional
+        The part in which to create the datum plane. If None, uses the current work part.
+    
+    Returns
+    -------
+    NXOpen.Features.DatumPlaneFeature
+        The created datum plane feature.
+    
+    Notes
+    -----
+    The function creates a datum plane using the Distance method, which positions
+    the new plane parallel to the reference plane at the specified distance.
+    The plane is not flipped and the positive side of the plane is preserved (not reversed).
+    """
+    if work_part is None:
+        work_part = the_session.Parts.Work
+
+    datum_plane_builder = work_part.Features.CreateDatumPlaneBuilder(NXOpen.Features.Feature.Null)
+    _plane = datum_plane_builder.GetPlane()
+    _plane.SetMethod(NXOpen.PlaneTypes.MethodType.Distance)
+    _plane.SetFlip(False)
+    _plane.SetReverseSide(False)
+
+    geom = [NXOpen.NXObject.Null] * 1 
+    geom[0] = plane
+    _plane.SetGeometry(geom)
+
+    expression = _plane.Expression
+    expression.RightHandSide = str(distance)
+    _plane.SetAlternate(NXOpen.PlaneTypes.AlternateType.One)
+    _plane.Evaluate()
+
+    datum_plane_feature = datum_plane_builder.CommitFeature()
+    datum_plane_builder.Destroy()
+
+    return datum_plane_feature
+
+
+def get_distance_between_planes(plane1: NXOpen.DatumPlane, plane2: NXOpen.DatumPlane) -> float:
+    """
+    Calculate the shortest distance between two datum planes.
+    
+    Parameters
+    ----------
+    plane1 : NXOpen.DatumPlane
+        The first datum plane.
+    plane2 : NXOpen.DatumPlane
+        The second datum plane.
+    
+    Returns
+    -------
+    float
+        The shortest distance between the two planes.
+    
+    Notes
+    -----
+    The function calculates the distance by:
+    1. Finding the vector between the origins of the two planes
+    2. Computing the dot product of this vector with the normal of the first plane
+    3. Dividing by the magnitude of the normal vector
+    4. Taking the absolute value of the result
+    """
+    diff = NXOpen.Vector3d(plane2.Origin.X - plane1.Origin.X, plane2.Origin.Y - plane1.Origin.Y, plane2.Origin.Z - plane1.Origin.Z)
+    magnitude = math.sqrt(plane1.Normal.X**2 + plane1.Normal.Y**2 + plane1.Normal.Z**2)
+    distance = abs(dot_product_vector3d(diff, plane1.Normal)) / magnitude
+    return distance
+
+
+def get_distance_to_plane(point: Union[NXOpen.Point, NXOpen.Point3d], plane: NXOpen.DatumPlane) -> float:
+    """
+    Calculate the shortest distance from a point to a datum plane.
+    
+    Parameters
+    ----------
+    point : Union[NXOpen.Point3d, NXOpen.Point]
+        The point for which to calculate distance. Can be either a Point3d or Point object.
+    plane : NXOpen.DatumPlane
+        The datum plane to which the distance is calculated.
+    
+    Returns
+    -------
+    float
+        The shortest distance from the point to the plane.
+    
+    Raises
+    ------
+    ValueError
+        If the point parameter is neither a Point3d nor a Point object.
+    
+    Notes
+    -----
+    The function calculates the distance by:
+    1. Creating a vector from the plane's origin to the point
+    2. Computing the dot product of this vector with the plane's normal vector
+    3. Dividing by the magnitude of the normal vector
+    4. Taking the absolute value of the result
+    """
+    if type(point) is NXOpen.Point3d:
+        diff = NXOpen.Vector3d(point.X - plane.Origin.X, point.Y - plane.Origin.Y, point.Z - plane.Origin.Z)
+    elif type(point) is NXOpen.Point:
+        diff = NXOpen.Vector3d(point.Coordinates.X - plane.Origin.X, point.Coordinates.Y - plane.Origin.Y, point.Coordinates.Z - plane.Origin.Z)
+    else:
+        raise ValueError(f'Invalid type for point {type(point)}')
+
+    magnitude = math.sqrt(plane.Normal.X**2 + plane.Normal.Y**2 + plane.Normal.Z**2)
+    distance = abs(dot_product_vector3d(diff, plane.Normal)) / magnitude
+    return distance
+
+
+def divide_face_with_curve(face: NXOpen.Face, 
+                curve_feature: NXOpen.Features.CurveFeature, 
+                name: str = None,  # type: ignore
+                work_part: NXOpen.Part = None  # type: ignore
+                ) -> NXOpen.Features.Divideface:
+    """
+    Divide a face using a curve feature.
+    
+    Creates a divide face feature by projecting a curve onto the selected face.
+    The projection uses the face normal as the projection direction.
+    
+    Parameters
+    ----------
+    face : NXOpen.Face
+        The face to be divided.
+    curve_feature : NXOpen.Features.CurveFeature
+        The curve feature used to divide the face.
+    name : str, optional
+        Name to assign to the created feature. If None, the default name is used.
+    work_part : NXOpen.Part, optional
+        The part in which to create the feature. If None, uses the current work part.
+    
+    Returns
+    -------
+    NXOpen.Features.Divideface
+        The created divide face feature.
+    
+    Notes
+    -----
+    The function sets an offset distance formula of "5" and uses the face normal
+    as the projection direction. It creates a section containing only curves for
+    the dividing operation.
+    """
+
+    if work_part is None:
+        work_part = the_session.Parts.Work
+    divideface_builder: NXOpen.Features.DivideCurveBuilder = work_part.Features.CreateDividefaceBuilder(NXOpen.Features.Feature.Null)
+    divideface_builder.SelectDividingObject.OffsetDistance.SetFormula("5")
+
+    projection_options = divideface_builder.ProjectionOption
+    projection_options.ProjectVector = NXOpen.Direction.Null
+    projection_options.ProjectDirectionMethod = NXOpen.GeometricUtilities.ProjectionOptions.DirectionType.FaceNormal
+
+    sc_collector: NXOpen.ScCollector = work_part.ScCollectors.CreateCollector()
+    selectionIntentRuleOptions1 = work_part.ScRuleFactory.CreateRuleOptions()
+    # body1 = work_part.Bodies.FindObject("UNPARAMETERIZED_FEATURE(1)")
+    # faceBodyRule1 = work_part.ScRuleFactory.CreateRuleFaceBody(body1, selectionIntentRuleOptions1)
+    face_dumb_rule = work_part.ScRuleFactory.CreateRuleFaceDumb([face])
+    
+    selectionIntentRuleOptions1.Dispose()
+    rules1 = [None] * 1 
+    rules1[0] = face_dumb_rule
+    sc_collector.ReplaceRules(rules1, False) # type: ignore
+    divideface_builder.FacesToDivide = sc_collector
+
+    selectionIntentRuleOptions2 = work_part.ScRuleFactory.CreateRuleOptions()
+    selectionIntentRuleOptions2.SetSelectedFromInactive(False)
+    features1 = [NXOpen.Features.Feature.Null] * 1 
+    #curveOnSurface1 = work_part.Features.FindObject("CURVE_ON_SURFACE(9)")
+    features1[0] = curve_feature # curveOnSurface1
+    curveFeatureRule1 = work_part.ScRuleFactory.CreateRuleCurveFeature(features1, NXOpen.DisplayableObject.Null, selectionIntentRuleOptions2)
+
+    section2 = work_part.Sections.CreateSection(0.0094999999999999998, 0.01, 0.5) # type: ignore
+    section2.SetAllowedEntityTypes(NXOpen.Section.AllowTypes.OnlyCurves)
+    rules2 = [None] * 1 
+    rules2[0] = curveFeatureRule1
+    helpPoint1 = NXOpen.Point3d(139.82176736068584, 223.5488245492476, 426.99427887357456)
+    section2.AddToSection(rules2, NXOpen.NXObject.Null, NXOpen.NXObject.Null, NXOpen.NXObject.Null, helpPoint1, NXOpen.Section.Mode.Create, False)
+    divideface_builder.SelectDividingObject.DividingObjectsList.Add(section2)
+
+    feature = divideface_builder.CommitFeature()
+    divideface_builder.Destroy()
+
+    if name is not None:
+        feature.SetName(name)
+    
+    return feature
+
+
+def pattern_geometry(body: NXOpen.Body, 
+                     dir: Union[NXOpen.DatumAxis, NXOpen.Vector3d], 
+                     total_number: int, 
+                     distance_per_copy: float, 
+                     work_part: NXOpen.Part=None # type: ignore
+                     ):
+    """
+    Create a linear pattern of geometry along a specified direction.
+    
+    Parameters
+    ----------
+    body : NXOpen.Body
+        The body to be patterned.
+    dir : Union[NXOpen.DatumAxis, NXOpen.Vector3d]
+        The direction along which to pattern the body.
+        Can be either a datum axis or a vector.
+    total_number : int
+        Total number of instances (including the original) to create.
+    distance_per_copy : float
+        Distance between consecutive instances of the pattern.
+    work_part : NXOpen.Part, optional
+        The part in which to create the pattern. If None, uses the current work part.
+    
+    Returns
+    -------
+    NXOpen.Features.PatternGeometry
+        The created pattern geometry feature.
+    
+    Raises
+    ------
+    ValueError
+        If the provided direction is neither a DatumAxis nor a Vector3d.
+    
+    Notes
+    -----
+    When using a Vector3d for direction, the function temporarily creates
+    a point at the origin to establish the direction vector.
+    """
+    if work_part is None:
+        work_part = the_session.Parts.Work
+    
+    patternGeometryBuilder1 = work_part.Features.CreatePatternGeometryBuilder(NXOpen.Features.PatternGeometry.Null)
+    patternGeometryBuilder1.PatternService.RectangularDefinition.XSpacing.NCopies.SetFormula(str(total_number))
+    patternGeometryBuilder1.PatternService.RectangularDefinition.XSpacing.PitchDistance.SetFormula(str(distance_per_copy))
+    
+    if type(dir) is NXOpen.Vector3d:
+        point_feature = create_point(0.0, 0.0, 0.0)
+        point = point_feature.GetEntities()[0]
+        direction2 = work_part.Directions.CreateDirection(point, dir) # type: ignore
+        delete_feature(point_feature)
+    elif type(dir) is NXOpen.DatumAxis:
+        # datumAxis1 = work_part.Datums.FindObject("DATUM_CSYS(2) Z axis")
+        direction2 = work_part.Directions.CreateDirection(dir, NXOpen.Sense.Forward, NXOpen.SmartObject.UpdateOption.WithinModeling) # type: ignore
+    else:
+        raise ValueError('Invalid type for direction in pattern_geometry()')
+    
+    patternGeometryBuilder1.PatternService.RectangularDefinition.XDirection = direction2
+
+    added1 = patternGeometryBuilder1.GeometryToPattern.Add(body)
+
+    pattern_geometry_feature = patternGeometryBuilder1.Commit()
+    patternGeometryBuilder1.Destroy()
+
+    return pattern_geometry_feature
+
+
+def subtract_bodies(target: NXOpen.Body, 
+                    tool: NXOpen.Body, 
+                    retain_tool: bool=False, 
+                    retain_target: bool=True, 
+                    work_part: NXOpen.Part=None # type: ignore
+                    ) -> NXOpen.Features.BooleanFeature:
+    """
+    Perform a Boolean subtraction between two bodies.
+    
+    Subtracts the tool body from the target body using a Boolean operation.
+    
+    Parameters
+    ----------
+    target : NXOpen.Body
+        The body from which to subtract.
+    tool : NXOpen.Body
+        The body to subtract from the target.
+    retain_tool : bool, default=False
+        Whether to keep the tool body after the operation.
+    retain_target : bool, default=True
+        Whether to keep the target body after the operation.
+    work_part : NXOpen.Part, optional
+        The part in which to perform the operation. If None, uses the current work part.
+    
+    Returns
+    -------
+    NXOpen.Features.BooleanFeature
+        The created Boolean feature representing the subtraction operation.
+    
+    Notes
+    -----
+    The function uses a tolerance of 0.01 units for the Boolean operation.
+    It creates and configures the necessary selection collectors for both
+    the target and tool bodies.
+    """
+    if work_part is None:
+        work_part = the_session.Parts.Work
+    
+    boolean_builder: NXOpen.Features.BooleanBuilder = work_part.Features.CreateBooleanBuilderUsingCollector(NXOpen.Features.BooleanFeature.Null)
+    boolean_builder.Tolerance = 0.01
+    boolean_builder.Operation = NXOpen.Features.Feature.BooleanType.Subtract
+    boolean_builder.RetainTarget = retain_target
+    boolean_builder.RetainTool = retain_tool
+
+    # Select the target
+    sc_collector_target = work_part.ScCollectors.CreateCollector()
+    selection_intent_rule_options_target = work_part.ScRuleFactory.CreateRuleOptions()
+    selection_intent_rule_options_target.SetSelectedFromInactive(False)
+
+    target_bodies = [NXOpen.Body.Null] * 1 
+    # brep1 = work_part.Features.FindObject("UNPARAMETERIZED_FEATURE(31)")
+    target_bodies[0] = target # brep1
+    bodyFeatureRule1 = work_part.ScRuleFactory.CreateRuleBodyDumb(target_bodies, False, selection_intent_rule_options_target)
+    
+    selection_intent_rule_options_target.Dispose()
+    rules1 = [None] * 1
+    rules1[0] = bodyFeatureRule1
+    sc_collector_target.ReplaceRules(rules1, False) # type: ignore
+    
+    boolean_builder.TargetBodyCollector = sc_collector_target
+
+    # Select the tool
+    sc_collector_tool = work_part.ScCollectors.CreateCollector()
+    selection_intent_rule_options_tool = work_part.ScRuleFactory.CreateRuleOptions()
+    selection_intent_rule_options_tool.SetSelectedFromInactive(False)
+    
+    tool_bodies = [NXOpen.Body.Null] * 1 
+    # brep2 = work_part.Features.FindObject("UNPARAMETERIZED_FEATURE(30)")
+    tool_bodies[0] = tool # brep2
+    bodyFeatureRule2 = work_part.ScRuleFactory.CreateRuleBodyDumb(tool_bodies, True, selection_intent_rule_options_tool)
+    
+    selection_intent_rule_options_tool.Dispose()
+    rules2 = [None] * 1 
+    rules2[0] = bodyFeatureRule2
+    sc_collector_tool.ReplaceRules(rules2, False) # type: ignore
+    
+    boolean_builder.ToolBodyCollector = sc_collector_tool
+
+    boolean_feature: NXOpen.Features.BooleanFeature = boolean_builder.Commit()
+    boolean_builder.Destroy()
+
+    return boolean_feature
+
+
+def subtract_features(target: NXOpen.Features.Feature, 
+                      tool: NXOpen.Features.Feature, 
+                      work_part: NXOpen.Part=None,  # type: ignore
+                      retain_tool: bool=False) -> NXOpen.Features.BooleanFeature:
+    """
+    Perform a Boolean subtraction between two features.
+    
+    Subtracts the tool feature from the target feature using a Boolean operation.
+    
+    Parameters
+    ----------
+    target : NXOpen.Features.Feature
+        The feature from which to subtract.
+    tool : NXOpen.Features.Feature
+        The feature to subtract from the target.
+    work_part : NXOpen.Part, optional
+        The part in which to perform the operation. If None, uses the current work part.
+    retain_tool : bool, default=False
+        Whether to keep the tool feature after the operation.
+    
+    Returns
+    -------
+    NXOpen.Features.BooleanFeature
+        The created Boolean feature representing the subtraction operation.
+    
+    Notes
+    -----
+    The function uses a tolerance of 0.01 units for the Boolean operation.
+    Unlike subtract_bodies, this function works with Feature objects rather than Body objects.
+    It creates and configures the necessary selection collectors for both features.
+    """
+    if work_part is None:
+        work_part = the_session.Parts.Work
+    
+    boolean_builder: NXOpen.Features.BooleanBuilder = work_part.Features.CreateBooleanBuilderUsingCollector(NXOpen.Features.BooleanFeature.Null)
+    boolean_builder.Tolerance = 0.01
+    boolean_builder.Operation = NXOpen.Features.Feature.BooleanType.Subtract
+    boolean_builder.RetainTool = retain_tool
+
+    # Select the target
+    sc_collector_target = work_part.ScCollectors.CreateCollector()
+    selection_intent_rule_options_target = work_part.ScRuleFactory.CreateRuleOptions()
+    selection_intent_rule_options_target.SetSelectedFromInactive(False)
+
+    features1 = [NXOpen.Features.Feature.Null] * 1 
+    # brep1 = work_part.Features.FindObject("UNPARAMETERIZED_FEATURE(31)")
+    features1[0] = target # brep1
+    bodyFeatureRule1 = work_part.ScRuleFactory.CreateRuleBodyFeature(features1, True, NXOpen.DisplayableObject.Null, selection_intent_rule_options_target)
+    
+    selection_intent_rule_options_target.Dispose()
+    rules1 = [None] * 1
+    rules1[0] = bodyFeatureRule1
+    sc_collector_target.ReplaceRules(rules1, False) # type: ignore
+    
+    boolean_builder.TargetBodyCollector = sc_collector_target
+
+
+    # Select the tool
+    sc_collector_tool = work_part.ScCollectors.CreateCollector()
+    selection_intent_rule_options_tool = work_part.ScRuleFactory.CreateRuleOptions()
+    selection_intent_rule_options_tool.SetSelectedFromInactive(False)
+    
+    features2 = [NXOpen.Features.Feature.Null] * 1 
+    # brep2 = work_part.Features.FindObject("UNPARAMETERIZED_FEATURE(30)")
+    features2[0] = tool # brep2
+    bodyFeatureRule2 = work_part.ScRuleFactory.CreateRuleBodyFeature(features2, False, NXOpen.DisplayableObject.Null, selection_intent_rule_options_tool)
+    
+    selection_intent_rule_options_tool.Dispose()
+    rules2 = [None] * 1 
+    rules2[0] = bodyFeatureRule2
+    sc_collector_tool.ReplaceRules(rules2, False) # type: ignore
+    
+    boolean_builder.ToolBodyCollector = sc_collector_tool
+
+    boolean_feature: NXOpen.Features.BooleanFeature = boolean_builder.Commit()
+    boolean_builder.Destroy()
+
+    return boolean_feature
