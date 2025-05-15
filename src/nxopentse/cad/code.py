@@ -3,6 +3,7 @@ import math
 from typing import List, Tuple, Optional, cast, Union
 
 import NXOpen
+import NXOpen.UF
 import NXOpen.Features
 import NXOpen.GeometricUtilities
 import NXOpen.Assemblies
@@ -10,7 +11,116 @@ import NXOpen.Assemblies
 from ..tools.vector_arithmetic import dot_product_vector3d
 
 the_session: NXOpen.Session = NXOpen.Session.GetSession()
+the_uf_session: NXOpen.UF.UFSession = NXOpen.UF.UFSession.GetUFSession()
 the_lw: NXOpen.ListingWindow = the_session.ListingWindow
+
+
+class MassProps3d:
+    '''
+    Object to store the mass properties of a body and easily access and compare them.
+    '''
+    def __init__(
+        self,
+        surface_area: float = 0.0,
+        volume: float = 0.0,
+        mass: float = 0.0,
+        center_of_mass: Optional[List[float]] = None,
+        first_moments: Optional[List[float]] = None,
+        moments_of_inertia_wcs: Optional[List[float]] = None,
+        moments_of_inertia_centroidal: Optional[List[float]] = None,
+        spherical_moment_of_inertia: float = 0.0,
+        inertia_products_wcs: Optional[List[float]] = None,
+        inertia_products_centroidal: Optional[List[float]] = None,
+        principal_axes_wcs: Optional[List[float]] = None,
+        principal_moments_centroidal: Optional[List[float]] = None,
+        radii_of_gyration_wcs: Optional[List[float]] = None,
+        radii_of_gyration_centroidal: Optional[List[float]] = None,
+        spherical_radius_of_gyration: float = 0.0,
+        density: float = 0.0,
+    ):
+        self.surface_area = surface_area
+        self.volume = volume
+        self.mass = mass
+        self.center_of_mass = center_of_mass or [0.0, 0.0, 0.0]
+        self.first_moments = first_moments or [0.0, 0.0, 0.0]
+        self.moments_of_inertia_wcs = moments_of_inertia_wcs or [0.0, 0.0, 0.0]
+        self.moments_of_inertia_centroidal = moments_of_inertia_centroidal or [0.0, 0.0, 0.0]
+        self.spherical_moment_of_inertia = spherical_moment_of_inertia
+        self.inertia_products_wcs = inertia_products_wcs or [0.0, 0.0, 0.0]
+        self.inertia_products_centroidal = inertia_products_centroidal or [0.0, 0.0, 0.0]
+        self.principal_axes_wcs = principal_axes_wcs or [0.0, 0.0, 0.0]
+        self.principal_moments_centroidal = principal_moments_centroidal or [0.0, 0.0, 0.0]
+        self.radii_of_gyration_wcs = radii_of_gyration_wcs or [0.0, 0.0, 0.0]
+        self.radii_of_gyration_centroidal = radii_of_gyration_centroidal or [0.0, 0.0, 0.0]
+        self.spherical_radius_of_gyration = spherical_radius_of_gyration
+        self.density = density
+
+
+    def __str__(self) -> str:
+        return (
+            f"MassProps3d(\n"
+            f"  Surface Area={self.surface_area},\n"
+            f"  Volume (0.0 For Thin Shell)={self.volume},\n"
+            f"  Mass={self.mass},\n"
+            f"  Center Of Mass (COFM), WCS={self.center_of_mass},\n"
+            f"  First Moments (centroidal)={self.first_moments},\n"
+            f"  Moments Of Inertia, WCS={self.moments_of_inertia_wcs},\n"
+            f"  Moments Of Inertia (centroidal)={self.moments_of_inertia_centroidal},\n"
+            f"  Spherical Moment Of Inertia={self.spherical_moment_of_inertia},\n"
+            f"  Inertia Products, WCS={self.inertia_products_wcs},\n"
+            f"  Inertia Products (centroidal)={self.inertia_products_centroidal},\n"
+            f"  Principal Axes, WCS={self.principal_axes_wcs},\n"
+            f"  Principal Moments (centroidal)={self.principal_moments_centroidal},\n"
+            f"  Radii Of Gyration, WCS={self.radii_of_gyration_wcs},\n"
+            f"  Radii Of Gyration (centroidal)={self.radii_of_gyration_centroidal},\n"
+            f"  Spherical Radius Of Gyration={self.spherical_radius_of_gyration},\n"
+            f"  Density={self.density}\n"
+            f")"
+        )
+
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, MassProps3d):
+            return False
+        return (
+            self.surface_area == other.surface_area
+            and self.volume == other.volume
+            and self.mass == other.mass
+            and self.center_of_mass == other.center_of_mass
+            and self.first_moments == other.first_moments
+            and self.moments_of_inertia_wcs == other.moments_of_inertia_wcs
+            and self.moments_of_inertia_centroidal == other.moments_of_inertia_centroidal
+            and self.spherical_moment_of_inertia == other.spherical_moment_of_inertia
+            and self.inertia_products_wcs == other.inertia_products_wcs
+            and self.inertia_products_centroidal == other.inertia_products_centroidal
+            and self.principal_axes_wcs == other.principal_axes_wcs
+            and self.principal_moments_centroidal == other.principal_moments_centroidal
+            and self.radii_of_gyration_wcs == other.radii_of_gyration_wcs
+            and self.radii_of_gyration_centroidal == other.radii_of_gyration_centroidal
+            and self.spherical_radius_of_gyration == other.spherical_radius_of_gyration
+            and self.density == other.density
+        )
+
+
+    def __hash__(self) -> int:
+        return hash((
+            self.surface_area,
+            self.volume,
+            self.mass,
+            tuple(self.center_of_mass),
+            tuple(self.first_moments),
+            tuple(self.moments_of_inertia_wcs),
+            tuple(self.moments_of_inertia_centroidal),
+            self.spherical_moment_of_inertia,
+            tuple(self.inertia_products_wcs),
+            tuple(self.inertia_products_centroidal),
+            tuple(self.principal_axes_wcs),
+            tuple(self.principal_moments_centroidal),
+            tuple(self.radii_of_gyration_wcs),
+            tuple(self.radii_of_gyration_centroidal),
+            self.spherical_radius_of_gyration,
+            self.density,
+        ))
 
 
 def nx_hello():
@@ -44,6 +154,68 @@ def get_all_bodies_in_part(work_part: NXOpen.Part=None # type: ignore
         work_part = the_session.Parts.Work
     all_bodies: List[NXOpen.Body] = [item for item in work_part.Bodies] # type: ignore
     return all_bodies
+
+
+def get_body_properties(body: NXOpen.Body) -> MassProps3d:
+    '''
+    Get the properties of a body In METER and KG!!!!
+
+    Parameters
+    ----------
+    body : NXOpen.Body
+        The body to get the properties of.
+
+    Returns
+    -------
+    MassProps3d
+        A MassProps3d object with the properties of the body.
+
+    NOTES
+    -----
+    This is based on the GUI funcionality of getting the properties of a body.
+    Tested in Simcenter 2406
+    '''
+    # should update the code to use workpart.MeasureManager
+    (massProps, Stats) = the_uf_session.Modeling.AskMassProps3d([body.Tag], 1, 1, 4, 0.0, 1, [0.99,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
+    # Mass properties
+    # [0] = Surface Area
+    # [1] = Volume (0.0 For Thin Shell)
+    # [2] = Mass
+    # [3-5] = Center Of Mass (COFM), WCS
+    # [6-8] = First Moments (centroidal)
+    # [9-11] = Moments Of Inertia, WCS
+    # [12-14] = Moments Of Inertia (centroidal)
+    # [15] = Spherical Moment Of Inertia
+    # [16-18] = Inertia Products, WCS
+    # [19-21] = Inertia Products (centroidal)
+    # [22-30] = Principal Axes, WCS
+    # [31-33] = Principal Moments (centroidal)
+    # [34-36] = Radii Of Gyration, WCS
+    # [37-39] = Radii Of Gyration (centroidal)
+    # [40] = Spherical Radius Of Gyration
+    # [41-45] = Unused
+    # [46] = Density
+    # the_lw.WriteFullline(f"MassProps: {massProps}")
+
+    properties = MassProps3d(massProps[0],
+                             massProps[1],
+                             massProps[2],
+                             massProps[3:6],
+                             massProps[6:9],
+                             massProps[9:12],
+                             massProps[12:15],
+                             massProps[15],
+                             massProps[16:19],
+                             massProps[19:22],
+                             massProps[22:31],
+                             massProps[31:34],
+                             massProps[34:37],
+                             massProps[37:40],
+                             massProps[40],
+                             massProps[46])
+
+    return properties
+
 
 
 def get_all_vertices_in_body(body: NXOpen.Body) -> List[NXOpen.Point3d]:

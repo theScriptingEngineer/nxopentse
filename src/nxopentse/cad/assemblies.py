@@ -162,3 +162,32 @@ def create_component_from_bodies(bodies: List[NXOpen.Body],
 
     return component
 
+
+def add_parts_to_assembly(parts: List[NXOpen.Part], assembly: NXOpen.Part) -> None:
+    """
+    Add a part to an assembly.
+
+    Parameters
+    ----------
+    part : NXOpen.Part
+        The part to add to the assembly.
+    assembly : NXOpen.Part
+        The assembly to add the part to.
+
+    NOTES
+    -----
+    Tested in Simcenter 2406
+    """
+    add_component_builder: NXOpen.Assemblies.AddComponentBuilder = assembly.AssemblyManager.CreateAddComponentBuilder()
+    add_component_builder.SetCount(1)
+    add_component_builder.SetComponentAnchor(NXOpen.Assemblies.ProductInterface.InterfaceObject.Null)
+    add_component_builder.SetInitialLocationType(NXOpen.Assemblies.AddComponentBuilder.LocationType.WorkPartAbsolute)
+    add_component_builder.ReferenceSet = "Use Model"
+    add_component_builder.Layer = -1
+    add_component_builder.SetPartsToAdd(parts)
+    add_component_builder.ComponentName = assembly.Name
+
+    add_component_builder.Commit()
+    add_component_builder.ResetPartsToAdd()
+    add_component_builder.Destroy()
+

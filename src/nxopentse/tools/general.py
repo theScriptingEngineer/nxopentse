@@ -303,3 +303,66 @@ def get_expression_by_name(name: str,
     else:
         # something wrong
         raise ValueError(f'Found {len(expression)} with name {name}')
+
+
+def save_view_to_file(file_path: str) -> str:
+    """
+    Saves the current view of the model to a file in TIFF format.
+
+    This function exports the current view of the model to an image file in TIFF format. If the specified file already exists, 
+    it is deleted to ensure that the new image overwrites the previous one. The image export options are set to enhance edges, 
+    make the background transparent, and save in the TIFF file format.
+
+    Parameters
+    ----------
+    file_name : str
+        The full paht of the file to save the image to. File extension will be updated in line with the type.
+    type : NXOpen.Gateway.ImageExportBuilder.FileFormats, optional
+        The file format to save the image as. The default is `.Tiff`.
+
+    Returns
+    -------
+    str
+        The full path of the saved image file. Note that the file extension is not included in the return value.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file path is invalid or the file cannot be created.
+        
+    IOError
+        If an error occurs during the image export process.
+
+    Notes
+    -----
+    - The function currently only supports saving images in TIFF format.
+    - If the file already exists, it will be deleted and overwritten with the new image.
+    - Tested in SC2312. SC2406
+    - Errors on a second run "Gateway does not Exist on NXOpen" because of NXOpen.Gateway.ImageExportBuilder.FileFormats.Tiff
+      NXOpen.Gateway.ImageExportBuilder.BackgroundOptions.Transparent
+    """
+    if not os.path.isabs(file_path):
+        raise FileNotFoundError(f"Invalid file path: {file_path}")
+    
+    file_path_without_extension = os.path.splitext(file_path)[0]  # NX adds the extension for the specific file format
+    # delete existing file to mimic overwriting
+    if (os.path.exists(file_path)):
+        os.remove(file_path)
+    
+    image_export_builder: NXOpen.Gateway.ImageExportBuilder = the_UI.CreateImageExportBuilder()
+    try:
+        # Options
+        image_export_builder.EnhanceEdges = True
+        image_export_builder.RegionMode = False
+        # image_export_builder.FileFormat = NXOpen.Gateway.ImageExportBuilder.FileFormats.Tiff
+        image_export_builder.FileName = file_path_without_extension # NX adds the extension for the specific file format
+        # image_export_builder.BackgroundOption = NXOpen.Gateway.ImageExportBuilder.BackgroundOptions.Transparent
+        # Commit the builder
+        image_export_builder.Commit()
+    except Exception as e:
+        the_lw.WriteFullline(str(e))
+
+    file_name = image_export_builder.FileName
+    image_export_builder.Destroy()
+    return file_name
+ 

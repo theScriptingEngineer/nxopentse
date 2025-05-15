@@ -12,6 +12,14 @@ nxopentse.cad.code module
    :undoc-members:
    :show-inheritance:
 
+nxopentse.cad.assemblies module
+-------------------------
+
+.. automodule:: nxopentse.cad.assemblies
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
