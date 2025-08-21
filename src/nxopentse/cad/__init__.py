@@ -51,3 +51,8 @@ from .faceted import local_offset_face, \
                      create_points_on_facets, \
                      local_offset_facets, \
                      smooth_facet_body
+
+from .attributes import get_user_attribute_names_wp, \
+                        get_user_attribute_names, \
+                        get_attributes_dict_wp, \
+                        get_attributes_dict 

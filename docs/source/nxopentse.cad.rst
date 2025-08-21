@@ -20,6 +20,13 @@ nxopentse.cad.assemblies module
    :undoc-members:
    :show-inheritance:
 
+nxopentse.cad.attributes module
+-------------------------------
+.. automodule:: nxopentse.cad.attributes
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
