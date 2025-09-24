@@ -71,7 +71,7 @@ def load_results(post_inputs: List[PostInput], reference_type: str = "Structural
     if sim_part is None:
         if not isinstance(the_session.Parts.BaseWork, NXOpen.CAE.SimPart):
             raise ValueError("map_group_to_postgroup needs to be called on a .sim file!")
-        sim_part: NXOpen.CAE.SimPart = cast(NXOpen.CAE.SimPart, the_session.Parts.BaseWork)
+        sim_part = cast(NXOpen.CAE.SimPart, the_session.Parts.BaseWork)
 
     solution_results: List[NXOpen.CAE.SolutionResult] = [NXOpen.CAE.SolutionResult] * len(post_inputs)
 
@@ -81,7 +81,7 @@ def load_results(post_inputs: List[PostInput], reference_type: str = "Structural
 
         try:
             # SolutionResult[filename_solutionname]
-            solution_results[i] = cast(NXOpen.CAE.SolutionResult, the_session.ResultManager.FindObject("SolutionResult[" + os.path.basename(simPart.FullPath) + "_" + sim_solution.Name + "]"))
+            solution_results[i] = cast(NXOpen.CAE.SolutionResult, the_session.ResultManager.FindObject("SolutionResult[" + os.path.basename(sim_part.FullPath) + "_" + sim_solution.Name + "]"))
         except:
             the_uf_session.Ui.SetStatus("Loading results for " + post_inputs[i]._solution + " SubCase " + str(post_inputs[i]._subcase) + " Iteration " + str(post_inputs[i]._iteration) + " ResultType " + post_inputs[i]._resultType)
             solution_results[i] = the_session.ResultManager.CreateReferenceResult(sim_result_reference)
@@ -971,7 +971,7 @@ def get_nodal_values(solution_name: str, subcase: int, iteration: int, result_ty
     return dict(sorted(nodal_data.items()))
 
 
-def get_element_nodal_value(solution_name: str, subcase: int, iteration: int, result_type: str, element_label: int, result_parameters: NXOpen.CAE.ResultParameters = None) -> tuple:
+def get_element_nodal_value(solution_name: str, subcase: int, iteration: int, result_type: str, element_label: int, result_parameters: List[NXOpen.CAE.ResultParameters] = None) -> tuple:
     """
     Retrieve element-nodal values for a specific element in a given solution.
     Note that the element-nodal values are hard coded to be stress and the maximum of the section for shell elements
@@ -993,7 +993,7 @@ def get_element_nodal_value(solution_name: str, subcase: int, iteration: int, re
     element_label : int
         The label of the element for which element-nodal values are to be retrieved.
 
-    result_parameters : NXOpen.CAE.ResultParameters, optional
+    result_parameters : List[NXOpen.CAE.ResultParameters], optional
         The result parameters to use for the elemental values. Default is ShellSection.Maximum and stress components.
 
     Returns
@@ -1042,7 +1042,7 @@ def get_element_nodal_value(solution_name: str, subcase: int, iteration: int, re
     result: NXOpen.CAE.Result = cast(NXOpen.CAE.Result, solution_results[0])
     result_types: List[NXOpen.CAE.ResultType] = get_result_types([post_input], solution_results)
     if result_parameters is None:
-        result_parameters: List[NXOpen.CAE.ResultParameters] = get_result_paramaters(result_types, NXOpen.CAE.Result.ShellSection.Maximum, NXOpen.CAE.Result.Component.Xx, False)
+        result_parameters = get_result_paramaters(result_types, NXOpen.CAE.Result.ShellSection.Maximum, NXOpen.CAE.Result.Component.Xx, False)
     result_access: NXOpen.CAE.ResultAccess = the_session.ResultManager.CreateResultAccess(result, result_parameters[0])
     element_nodal_data: tuple = result_access.AskElementNodalResultAllComponents(solution_results[0].AskElementIndex(element_label)) #.AskNodalResultAllComponents(solution_results[0].AskNodeIndex(element_label))
     
@@ -1052,7 +1052,7 @@ def get_element_nodal_value(solution_name: str, subcase: int, iteration: int, re
     return element_nodal_data
 
 
-def get_elemental_value(solution_name: str, subcase: int, iteration: int, result_type: str, element_label: int, result_parameters: NXOpen.CAE.ResultParameters = None) -> tuple:
+def get_elemental_value(solution_name: str, subcase: int, iteration: int, result_type: str, element_label: int, result_parameters: List[NXOpen.CAE.ResultParameters] = None) -> List[float]:
     """
     Retrieve elemental values for a specific element in a given solution.
     Note that the elemental values are hard coded to be stress and the maximum of the section for shell elements
@@ -1074,7 +1074,7 @@ def get_elemental_value(solution_name: str, subcase: int, iteration: int, result
     element_label : int
         The label of the element for which elemental values are to be retrieved.
     
-    result_parameters : NXOpen.CAE.ResultParameters, optional
+    result_parameters : List[NXOpen.CAE.ResultParameters], optional
         The result parameters to use for the elemental values. Default is ShellSection.Maximum and stress components.
 
     Returns
@@ -1120,7 +1120,7 @@ def get_elemental_value(solution_name: str, subcase: int, iteration: int, result
     result: NXOpen.CAE.Result = cast(NXOpen.CAE.Result, solution_results[0])
     result_types: List[NXOpen.CAE.ResultType] = get_result_types([post_input], solution_results)
     if result_parameters is None:
-        result_parameters: List[NXOpen.CAE.ResultParameters] = get_result_paramaters(result_types, NXOpen.CAE.Result.ShellSection.Maximum, NXOpen.CAE.Result.Component.Xx, False)
+        result_parameters = get_result_paramaters(result_types, NXOpen.CAE.Result.ShellSection.Maximum, NXOpen.CAE.Result.Component.Xx, False)
     result_access: NXOpen.CAE.ResultAccess = the_session.ResultManager.CreateResultAccess(result, result_parameters[0])
     elemental_data: List[float] = result_access.AskElementResultAllComponents(solution_results[0].AskElementIndex(element_label))
 
@@ -1177,7 +1177,7 @@ def write_submodel_data_to_file(solution_name: str, group_name: str) -> None:
 
     """
     nodes_in_group: Dict[int, NXOpen.CAE.FENode] = get_nodes_in_group(group_name)
-    solution = get_solution(solution_name)
+    solution: NXOpen.CAE.simSolution = get_solution(solution_name)
     for i in range(solution.StepCount):
         the_uf_session.Ui.SetStatus("Writing data for " + solution.GetStepByIndex(i).Name)
         nodal_displacements: Dict[int, List[float]] = get_nodal_values(solution_name, i + 1, 1, 'Displacement - Nodal', nodes_in_group.keys())

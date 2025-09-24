@@ -9,6 +9,7 @@ import NXOpen.UF
 
 the_session: NXOpen.Session = NXOpen.Session.GetSession()
 the_uf_session: NXOpen.UF.UFSession = NXOpen.UF.UFSession.GetUFSession()
+the_ui: NXOpen.UI = NXOpen.UI.GetUI() # type: ignore
 the_lw: NXOpen.ListingWindow = the_session.ListingWindow
 
 
@@ -349,7 +350,7 @@ def save_view_to_file(file_path: str) -> str:
     if (os.path.exists(file_path)):
         os.remove(file_path)
     
-    image_export_builder: NXOpen.Gateway.ImageExportBuilder = the_UI.CreateImageExportBuilder()
+    image_export_builder: NXOpen.Gateway.ImageExportBuilder = the_ui.CreateImageExportBuilder()
     try:
         # Options
         image_export_builder.EnhanceEdges = True
